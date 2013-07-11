@@ -30,6 +30,45 @@ from ..outputs import MtsLog
 
 from ..properties.world import MediumParameter
 
+class BoolParameter(object):
+	name				= None
+	default				= False
+	attr 				= None
+	controls			= None
+	visibility			= None
+	properties			= None
+	
+	
+	def __init__(self,attr, name, description, default = False):
+		self.name = name 
+		self.attr = attr
+		self.default = default
+		self.description = description
+		
+		self.controls = self.get_controls()
+		self.visibility = self.get_visibility()
+		self.properties = self.get_properties()
+		
+	def get_controls(self):
+		return [ self.attr ]
+	
+	def get_properties(self):
+		return [
+			{
+				'type': 'bool',
+				'attr': '%s' %self.attr,
+				'name': '%s' %self.name,
+				'description' : '%s' %self.description,
+				'default': self.default,
+				'save_in_preset': True
+			}
+			]
+	def get_visibility(self):
+		return None
+
+
+
+
 param_reflectance = ColorTextureParameter('reflectance', 'Reflectance', 'Diffuse reflectance value', default=(0.5, 0.5, 0.5))
 param_transmittance = ColorTextureParameter('transmittance', 'Diffuse Transmittance', 'Diffuse transmittance value', default=(0.5, 0.5, 0.5))
 param_opacityMask = ColorTextureParameter('opacity', 'Opacity Mask', 'Opacity mask value', default=(0.5, 0.5, 0.5))
@@ -46,6 +85,7 @@ param_alphaRoughnessU = FloatTextureParameter('alphaU', 'Roughness U', 'Anisotro
 param_alphaRoughnessV = FloatTextureParameter('alphaV', 'Roughness V', 'Anisotropic roughness bitangent value', default=0.1)
 param_phongExponent = FloatTextureParameter('exponent', 'Exponent', 'Phong Exponent', default=30, max=1000)
 param_weightBlend = FloatTextureParameter('weight', 'Factor', 'Blending factor', default=0.2)
+param_useTwoSidedMatherials = BoolParameter('use_two_sided_bsdf','Use Two Sided BSDF','This parameter selects between using the same material for both sides or not',default=False)
 
 def dict_merge(*args):
 	vis = {}
@@ -119,12 +159,13 @@ class mitsuba_mat_bsdf(declarative_property_group):
 @MitsubaAddon.addon_register_class
 class mitsuba_bsdf_diffuse(declarative_property_group):	
 	ef_attach_to = ['mitsuba_mat_bsdf']
-	
+		
 	controls = param_reflectance.controls + \
 		param_alphaRoughness.controls + \
+		param_useTwoSidedMatherials.controls + \
 	[
 		'useFastApprox'
-	]
+	] 
 	
 	properties = [
 		{
@@ -135,9 +176,12 @@ class mitsuba_bsdf_diffuse(declarative_property_group):
 			'default': False,
 			'save_in_preset': True
 		}
+		
 	] + \
-		param_reflectance.properties + \
-		param_alphaRoughness.properties
+	param_useTwoSidedMatherials.properties + \
+	param_reflectance.properties + \
+	param_alphaRoughness.properties
+	
 	
 	visibility = dict_merge(
 		param_reflectance.visibility,
@@ -145,7 +189,7 @@ class mitsuba_bsdf_diffuse(declarative_property_group):
 	)
 	
 	def get_params(self):
-		params = ParamSet()
+		params = ParamSet()		
 		params.update(param_reflectance.get_params(self))
 		if self.alpha > 0 or (self.alpha_usetexture and self.alpha_texturename != ''):
 			params.update(param_alphaRoughness.get_params(self))
@@ -264,6 +308,7 @@ class mitsuba_bsdf_conductor(declarative_property_group):
 	] + \
 		param_alphaRoughness.controls + \
 		param_alphaRoughnessU.controls + \
+		param_useTwoSidedMatherials.controls + \
 		param_alphaRoughnessV.controls
 	
 	properties = [
@@ -325,6 +370,7 @@ class mitsuba_bsdf_conductor(declarative_property_group):
 		param_specularReflectance.properties + \
 		param_alphaRoughness.properties + \
 		param_alphaRoughnessU.properties + \
+		param_useTwoSidedMatherials.properties + \
 		param_alphaRoughnessV.properties
 	
 	visibility = dict_merge(
@@ -372,6 +418,7 @@ class mitsuba_bsdf_plastic(declarative_property_group):
 		'nonlinear',
 		'distribution'
 	] + \
+		param_useTwoSidedMatherials.controls + \
 		param_alphaRoughness.controls
 	
 	properties = [
@@ -420,6 +467,7 @@ class mitsuba_bsdf_plastic(declarative_property_group):
 	] + \
 		param_diffuseReflectance.properties + \
 		param_specularReflectance.properties + \
+		param_useTwoSidedMatherials.properties + \
 		param_alphaRoughness.properties
 	
 	visibility = dict_merge(
@@ -474,7 +522,8 @@ class mitsuba_bsdf_coating(declarative_property_group):
 	[
 		'distribution'
 	] + \
-		param_alphaRoughness.controls
+	param_useTwoSidedMatherials.controls + \
+	param_alphaRoughness.controls
 	
 	properties = [
 		{
@@ -524,6 +573,7 @@ class mitsuba_bsdf_coating(declarative_property_group):
 	] + \
 		CoatingProperty() + \
 		param_absorptionCoefficient.properties + \
+		param_useTwoSidedMatherials.properties + \
 		param_alphaRoughness.properties
 	
 	visibility = dict_merge(
@@ -550,10 +600,12 @@ class mitsuba_bsdf_phong(declarative_property_group):
 	
 	controls = param_phongExponent.controls + \
 		param_diffuseReflectance.controls + \
+		param_useTwoSidedMatherials.controls + \
 		param_specularReflectance.controls
 	
 	properties = param_phongExponent.properties + \
 		param_diffuseReflectance.properties + \
+		param_useTwoSidedMatherials.properties + \
 		param_specularReflectance.properties
 	
 	visibility = dict_merge(
@@ -921,6 +973,7 @@ class mitsuba_bsdf_ward(declarative_property_group):
 		param_alphaRoughnessU.controls + \
 		param_alphaRoughnessV.controls + \
 		param_diffuseReflectance.controls + \
+		param_useTwoSidedMatherials.controls + \
 		param_specularReflectance.controls
 	
 	properties = [
@@ -941,6 +994,7 @@ class mitsuba_bsdf_ward(declarative_property_group):
 		param_alphaRoughnessU.properties + \
 		param_alphaRoughnessV.properties + \
 		param_diffuseReflectance.properties + \
+		param_useTwoSidedMatherials.properties + \
 		param_specularReflectance.properties
 	
 	visibility = dict_merge(
@@ -1028,7 +1082,8 @@ class mitsuba_bsdf_mixturebsdf(declarative_property_group):
 	
 	controls = [
 		'nElements'
-	] + sum(map(lambda x: x.get_controls(), param_mat), [])
+	] + param_useTwoSidedMatherials.controls + \
+	 sum(map(lambda x: x.get_controls(), param_mat), [])
 	
 	properties = [
 		{
@@ -1041,7 +1096,8 @@ class mitsuba_bsdf_mixturebsdf(declarative_property_group):
 			'max': 5,
 			'save_in_preset': True
 		}
-	] + sum(map(lambda x: x.get_properties(), param_mat), [])
+	] + param_useTwoSidedMatherials.properties + \
+	sum(map(lambda x: x.get_properties(), param_mat), [])
 	
 	visibility = mitsuba_bsdf_mixturebsdf_visibility()
 	
@@ -1061,7 +1117,7 @@ class mitsuba_bsdf_blendbsdf(declarative_property_group):
 	controls = param_weightBlend.controls + [
 		'mat_list1',
 		'mat_list2'
-	]
+	] + param_useTwoSidedMatherials.controls 
 	
 	properties = param_weightBlend.properties + [
 		{
@@ -1103,7 +1159,7 @@ class mitsuba_bsdf_blendbsdf(declarative_property_group):
 			'trg_attr': 'mat2_name',
 			'name': 'Material 2 reference'
 		}
-	]
+	] + param_useTwoSidedMatherials.properties
 	
 	visibility = param_weightBlend.visibility
 	

@@ -286,7 +286,7 @@ class SceneExporter:
 		
 		params = mmat.get_params()
 		
-		for p in params:
+		for p in params:			
 			if p.type == 'reference_material' and p.value != '':
 				self.exportMaterial(self.findMaterial(p.value))
 			elif p.type == 'reference_texture' and p.value != '':
@@ -345,6 +345,8 @@ class SceneExporter:
 			extmedium_params.export(self)
 			self.closeElement()
 		
+		
+		# Export Surface BSDF	
 		if mat.mitsuba_mat_bsdf.use_bsdf:
 			if mmat.type == 'bump':
 				self.exportBump(mat)
@@ -357,8 +359,20 @@ class SceneExporter:
 					mtype = 'thindielectric'
 				elif mmat.type in ['dielectric', 'conductor', 'plastic', 'coating'] and bsdf.distribution != 'none':
 					mtype = 'rough%s' % mmat.type
+
+
+				needTwoSided = False
+				twoSidedMatherial = ['diffuse','conductor','plastic','phong' ,'coating','ward','blendbsdf','mixturebsdf']
 				
-				self.openElement('bsdf', {'id' : '%s-material' % mat.name, 'type' : mtype})
+				if mmat.type in twoSidedMatherial:
+					sub_type = getattr(mmat, 'mitsuba_bsdf_%s' % mmat.type)					
+					needTwoSided = sub_type.use_two_sided_bsdf
+				
+				if (mmat.type in twoSidedMatherial) and needTwoSided:				
+					self.openElement('bsdf', {'id' : '%s-material' % mat.name, 'type' : "twosided"})
+					self.openElement('bsdf', {'type' : mtype})
+				else :
+					self.openElement('bsdf', {'id' : '%s-material' % mat.name, 'type' : mtype})
 				
 				params.export(self)
 				
@@ -370,8 +384,13 @@ class SceneExporter:
 						self.parameter('float', 'g', {'value' : str(mmat.g)})
 						self.closeElement()
 				
+						
 				self.closeElement()
-	
+								
+				if (mmat.type in twoSidedMatherial) and needTwoSided:				
+					self.closeElement()	
+													
+				
 	def exportMaterialEmitter(self, ob_mat):
 		lamp = ob_mat.mitsuba_mat_emitter
 		mult = lamp.intensity
