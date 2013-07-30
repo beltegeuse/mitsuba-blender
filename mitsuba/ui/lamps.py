@@ -50,7 +50,11 @@ class lamps(lamps_panel):
 			split = layout.split()
 			
 			col = split.column()
-
+			
+			rowBut = layout.row(align=True)
+			rowBut.operator("mitsuba.convert_all_lamps")
+			rowBut.operator("mitsuba.convert_active_lamps")#, icon='WORLD_DATA'
+			
 			if lamp.type == 'HEMI':
 				layout.prop(lamp.mitsuba_lamp, "envmap_type", text="Type")
 

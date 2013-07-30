@@ -101,7 +101,7 @@ class mitsuba_lamp(declarative_property_group):
 			'attr': 'radius',
 			'name': 'Point Size',
 			'description': 'For realism mitsuba uses small sphere as point Light aproximation',
-			'default': 0.1,
+			'default': 0.2,
 			'min': 0.001,
 			'max': 30.0,
 		}

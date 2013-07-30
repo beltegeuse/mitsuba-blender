@@ -118,7 +118,7 @@ class SceneExporter:
 		if ltype == 'POINT':
 			self.openElement('shape', { 'type' : 'sphere'})
 			self.exportPoint(lamp.location)
-			self.parameter('float', 'radius', {'value' : lamp.data.mitsuba_lamp.radius})
+			self.parameter('float', 'radius', {'value' : 7*lamp.data.mitsuba_lamp.radius})			#7*
 			self.openElement('emitter', { 'id' : '%s-light' % name, 'type' : 'area'})
 			self.parameter('rgb', 'radiance', { 'value' : "%f %f %f"
 					% (lamp.data.color.r*mult, lamp.data.color.g*mult, lamp.data.color.b*mult)})
