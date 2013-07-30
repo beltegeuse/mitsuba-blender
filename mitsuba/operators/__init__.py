@@ -216,26 +216,133 @@ class MITSUBA_OT_material_add(bpy.types.Operator):
 		obj.active_material_index = len(obj.data.materials)-1
 		return {'FINISHED'}
 
-def material_converter(report, scene, blender_mat):
+def material_converter(report, scene, blender_mat, obj = None):
+	''' Converting one material from Blender to Mitsuba'''
 	try:
-		mitsuba_mat = blender_mat.mitsuba_mat_bsdf
-		if blender_mat.specular_intensity == 0:
+		# === Blender material conversion
+		mitsuba_mat = blender_mat.mitsuba_mat_bsdf		
+		if (blender_mat.use_transparency and blender_mat.transparency_method != 'MASK'):
+			mitsuba_mat.type = 'dielectric'
+			scene.mitsuba_integrator.type = 'bdpt'					
+			if blender_mat.transparency_method == 'Z_TRANSPARENCY':				
+				mitsuba_mat.mitsuba_bsdf_dielectric.thin = True	
+				mitsuba_mat.mitsuba_bsdf_dielectric.intIOR = 1.0						
+				mitsuba_mat.mitsuba_bsdf_dielectric.specularReflectance_color = [i * blender_mat.specular_intensity for i in blender_mat.specular_color]
+				mitsuba_mat.mitsuba_bsdf_dielectric.specularTransmittance_color = [i * blender_mat.diffuse_intensity for i in blender_mat.diffuse_color]							
+			else:		
+				# the RayTracing from blender	
+				mitsuba_mat.mitsuba_bsdf_dielectric.thin = False						
+				mul = (math.sqrt(blender_mat.specular_intensity * (1 - blender_mat.specular_alpha) )) % 1 
+				mitsuba_mat.mitsuba_bsdf_dielectric.specularReflectance_color = [i * mul for i in blender_mat.specular_color]				
+				mul = (math.sqrt(blender_mat.diffuse_intensity * (1 - blender_mat.alpha) )) % 1
+				mitsuba_mat.mitsuba_bsdf_dielectric.specularTransmittance_color = [i * mul for i in blender_mat.diffuse_color]				
+				mitsuba_mat.mitsuba_bsdf_dielectric.intIOR = blender_mat.raytrace_transparency.ior 		
+		elif blender_mat.raytrace_mirror.use :		
+			# a mirror part is used
+			scene.mitsuba_integrator.type = 'bdpt'
+			if (blender_mat.diffuse_intensity < 0.01 and blender_mat.specular_intensity < 0.01 ) :	
+				# simple conductor matherial
+				mitsuba_mat.type = 'conductor'
+				mitsuba_mat.mitsuba_bsdf_conductor.specularReflectance_color = blender_mat.mirror_color				
+			else :				
+				if obj != None :
+					bpy.context.scene.objects.active = obj
+				else :
+					obj = bpy.context.active_object
+												
+				name_diff = blender_mat.name + '_diffuse'
+				name_cond = blender_mat.name + "_conductor"
+				name_phon = blender_mat.name + "_phong"
+				
+				spec_inte = blender_mat.specular_intensity
+				diff_inte = blender_mat.diffuse_intensity	
+				
+				#Adding the Conductor Material																
+				if  (name_cond in bpy.data.materials) :
+					obj.data.materials.append(bpy.data.materials[name_cond])
+				else :
+					mat = bpy.data.materials.new(name=name_cond)
+					obj.data.materials.append(mat)
+					obj.active_material_index = len(obj.data.materials)-1										
+					mat.mitsuba_mat_bsdf.type = 'conductor'
+					mat.mitsuba_mat_bsdf.mitsuba_bsdf_conductor.specularReflectance_color = blender_mat.mirror_color		
+				
+				#Adding the Diffuse Material					
+				if  (name_diff in bpy.data.materials) :
+					obj.data.materials.append(bpy.data.materials[name_diff])
+				else :
+					mat = bpy.data.materials.new(name=name_diff)
+					obj.data.materials.append(mat)
+					obj.active_material_index = len(obj.data.materials)-1										
+					mat.mitsuba_mat_bsdf.type = 'diffuse'
+					mat.mitsuba_mat_bsdf.mitsuba_bsdf_diffuse.reflectance_color = blender_mat.diffuse_color																
+								
+				mitsuba_mat.type = 'mixturebsdf'								
+				mitsuba_mat.mitsuba_bsdf_mixturebsdf.mat1_name = name_diff 
+				mitsuba_mat.mitsuba_bsdf_mixturebsdf.mat1_weight = max((0.99 - blender_mat.raytrace_mirror.reflect_factor) * diff_inte,0.0)	
+				mitsuba_mat.mitsuba_bsdf_mixturebsdf.mat2_name = name_cond 
+				mitsuba_mat.mitsuba_bsdf_mixturebsdf.mat2_weight = max(blender_mat.raytrace_mirror.reflect_factor,0.0)				
+				
+				if blender_mat.specular_intensity > 0.01 :
+					#Adding the Phong Material ( if it is necessary)
+					if  (name_phon in bpy.data.materials) :
+						obj.data.materials.append(bpy.data.materials[name_phon])
+					else :
+						mat = bpy.data.materials.new(name=name_phon)
+						obj.data.materials.append(mat)
+						obj.active_material_index = len(obj.data.materials)-1												
+						mat.mitsuba_mat_bsdf.type = 'phong'				
+						mat.mitsuba_mat_bsdf.mitsuba_bsdf_phong.specularReflectance_color =  [i * spec_inte for i in blender_mat.specular_color]
+						mat.mitsuba_mat_bsdf.mitsuba_bsdf_phong.exponent = blender_mat.specular_hardness * 1.9 	 		
+										
+					mitsuba_mat.mitsuba_bsdf_mixturebsdf.nElements = 3				
+					mitsuba_mat.mitsuba_bsdf_mixturebsdf.mat3_name = name_phon 
+					mitsuba_mat.mitsuba_bsdf_mixturebsdf.mat3_weight = max((0.99 - blender_mat.raytrace_mirror.reflect_factor)* ( spec_inte/ (diff_inte + spec_inte)),0.0)
+					mitsuba_mat.mitsuba_bsdf_mixturebsdf.mat1_weight = max((0.99 - blender_mat.raytrace_mirror.reflect_factor) * (diff_inte / (diff_inte + spec_inte)),0.0)					
+		elif blender_mat.specular_intensity == 0:			
 			mitsuba_mat.type = 'diffuse'
 			mitsuba_mat.mitsuba_bsdf_diffuse.reflectance_color = blender_mat.diffuse_color
 		else:
 			mitsuba_mat.type = 'plastic'
-			mitsuba_mat.mitsuba_bsdf_roughplastic.diffuseReflectance_color = [i * blender_mat.diffuse_intensity for i in blender_mat.diffuse_color]
-			Roughness = math.exp(-blender_mat.specular_hardness/50)		#by eyeballing rule of Bartosz Styperek :/	
-			#Roughness = (1 - 1/blender_mat.specular_hardness)
-			mitsuba_mat.mitsuba_bsdf_roughplastic.specularReflectance_color = [i * blender_mat.specular_intensity for i in blender_mat.specular_color]
-			mitsuba_mat.mitsuba_bsdf_roughplastic.alpha = Roughness
-			mitsuba_mat.mitsuba_bsdf_roughplastic.distribution = 'beckmann'
-		if blender_mat.emit > 0:
-			emitter = blender_mat.mitsuba_mat_emitter
+			mitsuba_mat.mitsuba_bsdf_plastic.diffuseReflectance_color = [i * blender_mat.diffuse_intensity for i in blender_mat.diffuse_color]			
+			mitsuba_mat.mitsuba_bsdf_plastic.specularReflectance_color = [i * blender_mat.specular_intensity for i in blender_mat.specular_color]
+
+			Roughness = math.exp(-blender_mat.specular_hardness/50)		#by eyeballing rule of Bartosz Styperek :/				
+			mitsuba_mat.mitsuba_bsdf_plastic.alpha = Roughness		
+			mitsuba_mat.mitsuba_bsdf_plastic.distribution = 'beckmann'
+		
+		emitter = blender_mat.mitsuba_mat_emitter			
+		if blender_mat.emit > 0:			
 			emitter.use_emitter = True
 			emitter.intensity = blender_mat.emit
 			emitter.color = blender_mat.diffuse_color
+		else :
+			emitter.use_emitter = False
+		
 		report({'INFO'}, 'Converted blender material "%s"' % blender_mat.name)
+						
+		# === Blender texture conversion
+		for tex in blender_mat.texture_slots:			
+			if(tex ):
+				if (tex.use and tex.texture.type=='IMAGE' and mitsuba_mat.type=='diffuse'):
+					image = tex.texture.image
+					tex.texture.mitsuba_texture.mitsuba_tex_bitmap.filename = image.filepath
+					mitsuba_mat.mitsuba_bsdf_diffuse.reflectance_usetexture = True	
+					mitsuba_mat.mitsuba_bsdf_diffuse.reflectance_texturename = tex.texture.name
+														
+				elif (tex.use and tex.texture.type=='IMAGE' and mitsuba_mat.type=='plastic'):					 
+					if (tex.use_map_color_diffuse):						
+						image = tex.texture.image
+						tex.texture.mitsuba_texture.mitsuba_tex_bitmap.filename = image.filepath
+						blender_mat.mitsuba_mat_bsdf.mitsuba_bsdf_plastic.diffuseReflectance_usetexture = True
+						blender_mat.mitsuba_mat_bsdf.mitsuba_bsdf_plastic.diffuseReflectance_texturename = tex.texture.name
+												
+					elif (tex.use_map_color_spec):
+						image = tex.texture.image
+						tex.texture.mitsuba_texture.mitsuba_tex_bitmap.filename = image.filepath
+						blender_mat.mitsuba_mat_bsdf.mitsuba_bsdf_plastic.specularReflectance_usetexture = True 
+						blender_mat.mitsuba_mat_bsdf.mitsuba_bsdf_plastic.specularReflectance_texturename = tex.texture.name
+								
 		return {'FINISHED'}
 	except Exception as err:
 		report({'ERROR'}, 'Cannot convert material: %s' % err)
@@ -245,16 +352,45 @@ def material_converter(report, scene, blender_mat):
 class MITSUBA_OT_convert_all_materials(bpy.types.Operator):
 	bl_idname = 'mitsuba.convert_all_materials'
 	bl_label = 'Convert all Blender materials'
-	
+	file_log = None
 	def report_log(self, level, msg):
 		MtsLog('Material conversion %s: %s' % (level, msg))
 	
-	def execute(self, context):
-		for blender_mat in bpy.data.materials:
-			# Don't convert materials from linked-in files
-			if blender_mat.library == None:
-				material_converter(self.report_log, context.scene, blender_mat)
-		return {'FINISHED'}
+	def execute(self, context):	
+		outFile = MITSUBA_OT_convert_all_materials.file_log
+		for obj in bpy.data.objects:			
+			if obj.type == 'MESH' :				
+				l = len(obj.data.materials)				
+				l1 = l
+				l2 = l	
+				index = 0										
+				for i in range(l):	
+					try :	
+						blender_mat = obj.data.materials[index]
+						if blender_mat != None:
+							# Don't convert materials from linked-in files			
+							if blender_mat.library == None:						
+								material_converter(self.report_log, context.scene, blender_mat , obj)
+						l2 = len(obj.data.materials)						
+						index = index + (l2-l1) + 1
+						l1 = l2	
+					except Exception as err:
+						if outFile:
+							outFile.write("OBJ:%s  Material:%s"%(obj.name,blender_mat.name))
+						else :
+							MITSUBA_OT_convert_all_materials.file_log = open("ErrorConvertinhMaterials.txt",'w')
+							MITSUBA_OT_convert_all_materials.file_log.write("WE HAD PROBLEMS CONVERTING THE FOLLOWING MATERIALS \n\nOBJ:%s  Material:%s"%(obj.name,blender_mat.name))
+							 					
+						self.report_log({'ERROR'}, 'Cannot convert material: %s' % err)
+		
+		if outFile:
+			outFile.close()
+			return {'FINISHED WITH SOME PROBLEMS(check ErrorConvertinhMaterials.txt)'}
+		else:		
+			return {'FINISHED'}
+		
+		return {'FINISHED'}				
+						
 
 @MitsubaAddon.addon_register_class
 class MITSUBA_OT_convert_material(bpy.types.Operator):
@@ -271,6 +407,51 @@ class MITSUBA_OT_convert_material(bpy.types.Operator):
 		
 		material_converter(self.report, context.scene, blender_mat)
 		return {'FINISHED'}	
+
+
+def lamp_converter(blender_lamp):
+	#It will need some modification in the future
+	try:
+		if blender_lamp.type == 'POINT' :	
+			blender_lamp.mitsuba_lamp.intensity = blender_lamp.energy * 10
+		elif blender_lamp.type == 'SPOT':
+			blender_lamp.mitsuba_lamp.intensity = blender_lamp.energy * 20
+		elif blender_lamp.type == 'AREA':
+			blender_lamp.mitsuba_lamp.intensity = blender_lamp.energy * 10
+		else  :
+			blender_lamp.mitsuba_lamp.intensity = blender_lamp.energy
+		return {'FINISHED'}
+	except Exception as err:
+		MtsLog("Error : %s"%(str(err)))
+		return {'CANCELLED'}	
+
+@MitsubaAddon.addon_register_class
+class MITSUBA_OT_convert_active_lamp(bpy.types.Operator):
+	bl_idname = 'mitsuba.convert_active_lamps'
+	bl_label = 'Convert Active Blender Lamp'
+	
+	lamp_name = bpy.props.StringProperty(default='')
+	
+	def execute(self, context):
+		lamp_converter(context.lamp)
+		return {'FINISHED'}	
+
+@MitsubaAddon.addon_register_class
+class MITSUBA_OT_convert_all_lamps(bpy.types.Operator):
+	bl_idname = 'mitsuba.convert_all_lamps'
+	bl_label = 'Convert All Blender lamps'
+	
+	def execute(self, context):
+		try:
+			for lamp in bpy.data.lamps:
+				lamp_converter(lamp)
+		except Exception as err:
+			MtsLog("Error : %s"%(str(err)))
+			return {'CANCELLED'}		
+		
+		return {'FINISHED'}	
+
+
 
 @MitsubaAddon.addon_register_class
 class MITSUBA_MT_presets_medium(MITSUBA_MT_base):

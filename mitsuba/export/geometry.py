@@ -819,8 +819,8 @@ class GeometryExporter(object):
 			for dupli_ob in obj.dupli_list:
 				if dupli_ob.object.type not in ['MESH', 'SURFACE', 'FONT', 'CURVE']:
 					continue
-				if not is_obj_visible(self.visibility_scene, dupli_ob.object, is_dupli=True):
-					continue
+				#if not is_obj_visible(self.visibility_scene, dupli_ob.object, is_dupli=True):
+				#	continue
 				
 				self.objects_used_as_duplis.add(dupli_ob.object)
 				duplis.append(
@@ -903,8 +903,8 @@ class GeometryExporter(object):
 			
 			try:
 				# Export only objects which are enabled for render (in the outliner) and visible on a render layer
-				if not is_obj_visible(self.visibility_scene, obj):
-					raise UnexportableObjectException(' -> not visible')
+				#if not is_obj_visible(self.visibility_scene, obj):
+				#	raise UnexportableObjectException(' -> not visible')
 				
 				if obj.parent and obj.parent.is_duplicator:
 					raise UnexportableObjectException(' -> parent is duplicator')

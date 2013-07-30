@@ -36,7 +36,7 @@ class ui_material_dipole(mitsuba_material_base, bpy.types.Panel):
 	def draw_header(self, context):
 		self.layout.prop(context.material.mitsuba_mat_subsurface, "use_subsurface", text="")
 	
-	def draw(self, context):
+	def draw(self, context):		
 		layout = self.layout
 		mat = context.material.mitsuba_mat_subsurface
 		layout.active = (mat.use_subsurface)
