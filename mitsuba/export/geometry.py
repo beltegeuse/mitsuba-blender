@@ -89,7 +89,7 @@ class GeometryExporter(object):
 		self.valid_particles_callbacks = self.callbacks['particles'].keys()
 		self.valid_objects_callbacks = self.callbacks['objects'].keys()
 	
-	def buildMesh(self, obj):
+	def buildMesh(self, obj , groupName = None):
 		"""
 		Decide which mesh format to output.
 		"""
@@ -107,14 +107,14 @@ class GeometryExporter(object):
 			mesh_type = obj.data.mitsuba_mesh.mesh_type
 			global_type = self.visibility_scene.mitsuba_engine.mesh_type
 			if mesh_type == 'native' or (mesh_type == 'global' and global_type == 'native'):
-				mesh_definitions.extend( self.buildNativeMesh(obj) )
+				mesh_definitions.extend( self.buildNativeMesh(obj, groupName) )
 			if mesh_type == 'binary_ply' or (mesh_type == 'global' and global_type == 'binary_ply'):
-				mesh_definitions.extend( self.buildBinaryPLYMesh(obj) )
+				mesh_definitions.extend( self.buildBinaryPLYMesh(obj, groupName) )
 		
 		self.ExportedObjects.add(obj_cache_key, mesh_definitions)
 		return mesh_definitions
 	
-	def buildBinaryPLYMesh(self, obj):
+	def buildBinaryPLYMesh(self, obj,grupName=None):
 		"""
 		Convert supported blender objects into a MESH, and then split into parts
 		according to vertex material assignment, and create a binary PLY file.
@@ -314,7 +314,7 @@ class GeometryExporter(object):
 						shape_params
 					)
 					# Only export Shapegroup and cache this mesh_definition if we plan to use instancing
-					if self.allow_instancing(obj) and self.exportShapeDefinition(obj, mesh_definition):
+					if self.allow_instancing(obj) and self.exportShapeDefinition(obj, mesh_definition,grupName):
 						shape_params = ParamSet().add_reference(
 							'id',
 							'',
@@ -342,7 +342,7 @@ class GeometryExporter(object):
 		
 		return mesh_definitions
 	
-	def buildNativeMesh(self, obj):
+	def buildNativeMesh(self, obj , groupName = None):
 		"""
 		Convert supported blender objects into a MESH, and then split into parts
 		according to vertex material assignment, and construct a serialized mesh
@@ -525,13 +525,14 @@ class GeometryExporter(object):
 						shape_params
 					)
 					# Only export Shapegroup and cache this mesh_definition if we plan to use instancing
-					if self.allow_instancing(obj) and self.exportShapeDefinition(obj, mesh_definition):
+					
+					
+					if self.allow_instancing(obj) and self.exportShapeDefinition(obj, mesh_definition , groupName):
 						shape_params = ParamSet().add_reference(
 							'id',
 							'',
 							mesh_name + '-shapegroup_%i' % (i)
 						)
-						
 						mesh_definition = (
 							mesh_name,
 							i,
@@ -541,6 +542,7 @@ class GeometryExporter(object):
 						self.ExportedMeshes.add(mesh_cache_key, mesh_definition)
 					
 					mesh_definitions.append( mesh_definition )
+					
 					
 				except InvalidGeometryException as err:
 					MtsLog('Mesh export failed, skipping this mesh: %s' % err)
@@ -574,7 +576,7 @@ class GeometryExporter(object):
 		else:
 			return not self.is_preview
 	
-	def exportShapeDefinition(self, obj, mesh_definition):
+	def exportShapeDefinition(self, obj, mesh_definition , groupName = None):
 		"""
 		If the mesh is valid and instancing is allowed for this object, export
 		a Shapegroup block containing the Shape definition.
@@ -590,7 +592,10 @@ class GeometryExporter(object):
 			ob_mat = obj.material_slots[me_mat_index].material
 			# create material xml
 			if ob_mat != None and self.mts_context.isMaterialSafe(ob_mat):
+				oldName = ob_mat.name
+				ob_mat.name = oldName + ("_%s" % groupName) 
 				self.mts_context.exportMaterial(ob_mat)
+				ob_mat.name = oldName
 			else:
 				return False
 		except IndexError:
@@ -602,7 +607,7 @@ class GeometryExporter(object):
 		me_shape_params.export(self.mts_context)
 		
 		if ob_mat != None:
-			self.mts_context.element('ref', {'name' : 'bsdf', 'id' : '%s-material' % ob_mat.name})
+			self.mts_context.element('ref', {'name' : 'bsdf', 'id' : '%s_%s-material' % (ob_mat.name,groupName)})
 		
 		self.mts_context.closeElement()
 		self.mts_context.closeElement()
@@ -852,7 +857,7 @@ class GeometryExporter(object):
 				
 				self.exportShapeInstances(
 					obj,
-					self.buildMesh(do),
+					self.buildMesh(do,obj.name),
 					matrix=[dm,None],
 					parent=do,
 					index=dupli_index
