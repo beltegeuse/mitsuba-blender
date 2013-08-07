@@ -21,13 +21,16 @@ import os, sys, subprocess, traceback, string, math
 
 # Blender Libs
 import bpy, bl_operators
-
+#from ..export.MaterialConvertors import material_selection_for_convertion_cycles
 # Extensions_Framework Libs
 from extensions_framework import util as efutil
 
 from .. import MitsubaAddon
 from ..outputs import MtsLog
 from ..export.scene import SceneExporter
+from mitsuba.operators.MaterialConvertors import material_selection_for_convertion_cycles, assigne_default_material
+from mitsuba.operators.Test import *
+#
 
 class MITSUBA_MT_base(bpy.types.Menu):
 	preset_operator = "script.execute_preset"
@@ -215,6 +218,34 @@ class MITSUBA_OT_material_add(bpy.types.Operator):
 		obj.data.materials.append(mat)
 		obj.active_material_index = len(obj.data.materials)-1
 		return {'FINISHED'}
+	
+def material_converter_cycles(report, scene, blender_mat , obj = None):
+	try:		
+		# Get the Material Node
+		matOutNode = None
+		if("Material Output" in blender_mat.node_tree.nodes):
+			matOutNode = blender_mat.node_tree.nodes["Material Output"]
+		else:
+			report({'INFO'}, 'No Cycle entry point for "%s"' % blender_mat.name)
+			return {'FINISHED'}
+		
+		# Take input
+		if(not matOutNode.inputs["Surface"].is_linked):
+			report({'INFO'}, 'No Cycle Surface node link "%s"' % blender_mat.name)
+			return {'FINISHED'}
+		currentNode = matOutNode.inputs["Surface"].links[0].from_node
+		matDone = material_selection_for_convertion_cycles( blender_mat, currentNode , obj)
+		if(matDone):
+			report({'INFO'}, 'Converted blender material "%s"' % blender_mat.name)
+			return {'FINISHED'}
+		else:
+			assigne_default_material(blender_mat)
+			report({'ERROR'}, 'Cannot convert material: %s' % blender_mat.name)
+			return {'FINISHED'}
+	except Exception as err:
+		report({'ERROR'}, 'Cannot convert material: %s' % err)
+		return {'CANCELLED'}
+
 
 def material_converter(report, scene, blender_mat, obj = None):
 	''' Converting one material from Blender to Mitsuba'''
@@ -368,7 +399,7 @@ class MITSUBA_OT_convert_all_materials(bpy.types.Operator):
 					try :	
 						blender_mat = obj.data.materials[index]
 						if blender_mat != None:
-							# Don't convert materials from linked-in files			
+								
 							if blender_mat.library == None:						
 								material_converter(self.report_log, context.scene, blender_mat , obj)
 						l2 = len(obj.data.materials)						
@@ -391,7 +422,6 @@ class MITSUBA_OT_convert_all_materials(bpy.types.Operator):
 		
 		return {'FINISHED'}				
 						
-
 @MitsubaAddon.addon_register_class
 class MITSUBA_OT_convert_material(bpy.types.Operator):
 	bl_idname = 'mitsuba.convert_material'
@@ -408,6 +438,65 @@ class MITSUBA_OT_convert_material(bpy.types.Operator):
 		material_converter(self.report, context.scene, blender_mat)
 		return {'FINISHED'}	
 
+@MitsubaAddon.addon_register_class
+class MITSUBA_OT_convert_all_materials_cycles(bpy.types.Operator):
+	bl_idname = 'mitsuba.convert_all_materials_cycles'
+	bl_label = 'Convert all Cycles materials'
+	file_log = None
+	def report_log(self, level, msg):
+		MtsLog('Material conversion %s: %s' % (level, msg))
+
+	def execute(self, context):	
+		MtsLog("\n\n\n\nTring the convert all materials from Cycles")
+		outFile = MITSUBA_OT_convert_all_materials.file_log
+		for obj in bpy.data.objects:			
+			if obj.type == 'MESH' :				
+				l = len(obj.data.materials)
+				materialNames = []				
+				for i in range(l):
+					materialNames.append(obj.data.materials[i].name)
+			
+				for i in materialNames:	
+					try :	
+						blender_mat = obj.data.materials[i]
+						if blender_mat != None:
+							# Don't convert materials from linked-in files			
+							if blender_mat.library == None:						
+								material_converter_cycles(self.report_log, context.scene, blender_mat , obj)
+						
+					except Exception as err:
+						if outFile:
+							outFile.write("OBJ:%s  Material:%s"%(obj.name,blender_mat.name))
+						else :
+							MITSUBA_OT_convert_all_materials.file_log = open("ErrorConvertinhMaterials.txt",'w')
+							MITSUBA_OT_convert_all_materials.file_log.write("WE HAD PROBLEMS CONVERTING THE FOLLOWING MATERIALS \n\nOBJ:%s  Material:%s"%(obj.name,blender_mat.name))
+						self.report_log({'ERROR'}, 'Cannot convert material: %s' % err)
+		
+		if outFile:
+			outFile.close()
+			MtsLog("FINISHED WITH SOME PROBLEMS(check ErrorConvertinhMaterials.txt)", popup=True)
+			return {'FINISHED WITH SOME PROBLEMS(check ErrorConvertinhMaterials.txt)'}
+		else:		
+			return {'FINISHED'}
+		
+		return {'FINISHED'}						
+						
+@MitsubaAddon.addon_register_class
+class MITSUBA_OT_convert_material_cycles(bpy.types.Operator):
+	bl_idname = 'mitsuba.convert_material_cycles'
+	bl_label = 'Convert selected Cycles material'
+	
+	material_name = bpy.props.StringProperty(default='')
+	
+	def execute(self, context):		
+		MtsLog("\n\n\nPath: %s" %efutil.export_path)		
+		if self.properties.material_name == '':
+			blender_mat = context.material
+		else:
+			blender_mat = bpy.data.materials[self.properties.material_name]
+		
+		material_converter_cycles(self.report, context.scene, blender_mat)
+		return {'FINISHED'}	
 
 def lamp_converter(blender_lamp):
 	#It will need some modification in the future
@@ -450,8 +539,6 @@ class MITSUBA_OT_convert_all_lamps(bpy.types.Operator):
 			return {'CANCELLED'}		
 		
 		return {'FINISHED'}	
-
-
 
 @MitsubaAddon.addon_register_class
 class MITSUBA_MT_presets_medium(MITSUBA_MT_base):

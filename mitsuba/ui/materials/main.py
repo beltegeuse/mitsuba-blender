@@ -36,10 +36,15 @@ class MATERIAL_PT_material_utils(mitsuba_material_base):
 		row.operator("mitsuba.preset_material_add", text="", icon="ZOOMIN")
 		row.operator("mitsuba.preset_material_add", text="", icon="ZOOMOUT").remove_active = True
 		
+		
 		row = self.layout.row(align=True)
 		row.operator("mitsuba.convert_all_materials", icon='WORLD_DATA')
 		row = self.layout.row(align=True)
 		row.operator("mitsuba.convert_material", icon='MATERIAL_DATA')
+		row = self.layout.row(align=True)
+		row.operator("mitsuba.convert_all_materials_cycles", icon='WORLD_DATA')
+		row = self.layout.row(align=True)
+		row.operator("mitsuba.convert_material_cycles", icon='MATERIAL_DATA')
 
 @MitsubaAddon.addon_register_class
 class MATERIAL_PT_material_bsdf(mitsuba_material_base, bpy.types.Panel):

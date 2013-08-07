@@ -1337,7 +1337,8 @@ class mitsuba_medium_homogeneous(declarative_property_group):
 class mitsuba_medium_heterogeneous(declarative_property_group):
 	controls = [
 		'method',
-		'density',
+		[0.9,'density' , 'useGrid'],
+		'gridFilename'
 		'albedo',
 		'orientation',
 		'scale',
@@ -1367,6 +1368,22 @@ class mitsuba_medium_heterogeneous(declarative_property_group):
 			'default' : 1.0,
 			'min': 0.0001,
 			'max': 50000.0,
+			'save_in_preset': True
+		},
+		{
+			'type': 'string',
+			'subtype': 'FILE_PATH',
+			'attr': 'gridFilename',
+			'name': 'Grid filename',
+			'description': 'Path to the grid file'
+		},
+		{
+			'attr': 'useGrid',
+			'type': 'bool',
+			'name': 'G',
+			'description': 'Use a Grid insted of the density',
+			'default': False,
+			'toggle': True,
 			'save_in_preset': True
 		},
 		{
@@ -1442,12 +1459,13 @@ class mitsuba_medium_heterogeneous(declarative_property_group):
 	visibility = dict_merge(
 		{
 			'g': { 'phaseType': 'hg' },
-			'stddev': { 'phaseType': 'microflake' }
+			'stddev': { 'phaseType': 'microflake' },			
 		}
 	)
 	
 	def get_params(self):
 		params = ParamSet()
+		params.add_string('gridFilename', efutil.path_relative_to_export(self.gridFilename))
 		params.add_string('method', self.method)
 		params.add_float('scale', self.scale)
 		return params
@@ -1476,7 +1494,7 @@ class mitsuba_mat_subsurface(declarative_property_group):
 			'items': [
 				('dipole', 'Dipole Subsurface', 'dipole'),
 				('homogeneous', 'Homogeneous Media', 'homogeneous'),
-				#('heterogeneous', 'Heterogeneous Media', 'heterogeneous')
+				('heterogeneous', 'Heterogeneous Media', 'heterogeneous')
 			],
 			'default': 'dipole',
 			'save_in_preset': True

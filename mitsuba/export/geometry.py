@@ -538,8 +538,8 @@ class GeometryExporter(object):
 							i,
 							'instance',
 							shape_params
-						)
-						self.ExportedMeshes.add(mesh_cache_key, mesh_definition)
+						)						
+						self.ExportedMeshes.add(mesh_cache_key, mesh_definition)						
 					
 					mesh_definitions.append( mesh_definition )
 					
@@ -861,7 +861,7 @@ class GeometryExporter(object):
 					matrix=[dm,None],
 					parent=do,
 					index=dupli_index
-				)
+				)				
 				dupli_index += 1
 			
 			del duplis
