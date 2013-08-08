@@ -29,7 +29,6 @@ from .. import MitsubaAddon
 from ..outputs import MtsLog
 from ..export.scene import SceneExporter
 from mitsuba.operators.MaterialConvertors import material_selection_for_convertion_cycles, assigne_default_material
-from mitsuba.operators.Test import *
 #
 
 class MITSUBA_MT_base(bpy.types.Menu):
@@ -55,6 +54,16 @@ class MITSUBA_OT_preset_engine_add(bl_operators.presets.AddPresetBase, bpy.types
 			'bpy.context.scene.mitsuba_engine.%s'%v['attr'] for v in bpy.types.mitsuba_engine.get_exportable_properties()
 		]
 		return super().execute(context)
+	
+#I'm not sure, but i think this can be made somehow more elegent 
+def get_director():
+	path = bpy.data.filepath
+	directors = path.split('/')
+	l = len(directors)
+	name = ""
+	for i in range(l-1):
+		 name = name + "/" + directors[i]
+	return name
 
 @MitsubaAddon.addon_register_class
 class MITSUBA_MT_presets_texture(MITSUBA_MT_base):
@@ -409,9 +418,9 @@ class MITSUBA_OT_convert_all_materials(bpy.types.Operator):
 						if outFile:
 							outFile.write("OBJ:%s  Material:%s"%(obj.name,blender_mat.name))
 						else :
-							MITSUBA_OT_convert_all_materials.file_log = open("ErrorConvertinhMaterials.txt",'w')
-							MITSUBA_OT_convert_all_materials.file_log.write("WE HAD PROBLEMS CONVERTING THE FOLLOWING MATERIALS \n\nOBJ:%s  Material:%s"%(obj.name,blender_mat.name))
-							 					
+							name = get_director() + "/ErrorConvertinhMaterials.txt"
+							MITSUBA_OT_convert_all_materials.file_log = open(name,'w')
+							MITSUBA_OT_convert_all_materials.file_log.write("WE HAD PROBLEMS CONVERTING THE FOLLOWING MATERIALS\n\nOBJ:%s  Material:%s" %(str(obj.name),str(blender_mat.name)) )
 						self.report_log({'ERROR'}, 'Cannot convert material: %s' % err)
 		
 		if outFile:
@@ -443,11 +452,11 @@ class MITSUBA_OT_convert_all_materials_cycles(bpy.types.Operator):
 	bl_idname = 'mitsuba.convert_all_materials_cycles'
 	bl_label = 'Convert all Cycles materials'
 	file_log = None
+	
 	def report_log(self, level, msg):
 		MtsLog('Material conversion %s: %s' % (level, msg))
 
-	def execute(self, context):	
-		MtsLog("\n\n\n\nTring the convert all materials from Cycles")
+	def execute(self, context):			
 		outFile = MITSUBA_OT_convert_all_materials.file_log
 		for obj in bpy.data.objects:			
 			if obj.type == 'MESH' :				
@@ -468,8 +477,9 @@ class MITSUBA_OT_convert_all_materials_cycles(bpy.types.Operator):
 						if outFile:
 							outFile.write("OBJ:%s  Material:%s"%(obj.name,blender_mat.name))
 						else :
-							MITSUBA_OT_convert_all_materials.file_log = open("ErrorConvertinhMaterials.txt",'w')
-							MITSUBA_OT_convert_all_materials.file_log.write("WE HAD PROBLEMS CONVERTING THE FOLLOWING MATERIALS \n\nOBJ:%s  Material:%s"%(obj.name,blender_mat.name))
+							name = get_director() + "/ErrorConvertinhMaterials.txt"
+							MITSUBA_OT_convert_all_materials.file_log = open(name,'w')
+							MITSUBA_OT_convert_all_materials.file_log.write("WE HAD PROBLEMS CONVERTING THE FOLLOWING MATERIALS\n\nOBJ:%s  Material:%s" %(str(obj.name),str(blender_mat.name)) )
 						self.report_log({'ERROR'}, 'Cannot convert material: %s' % err)
 		
 		if outFile:
@@ -488,8 +498,15 @@ class MITSUBA_OT_convert_material_cycles(bpy.types.Operator):
 	
 	material_name = bpy.props.StringProperty(default='')
 	
-	def execute(self, context):		
-		MtsLog("\n\n\nPath: %s" %efutil.export_path)		
+	def execute(self, context):					
+		
+		name = get_director() + "/ErrorConvertinhMaterials.txt"
+		test = open(name,'w')
+		test.write("WE HAD PROBLEMS CONVERTING THE FOLLOWING MATERIALS\nAKOS AZ ASSZ")
+		test.close()					
+		
+		MtsLog("\n\n\nFILE NAME : %s" %str(name))
+		
 		if self.properties.material_name == '':
 			blender_mat = context.material
 		else:
