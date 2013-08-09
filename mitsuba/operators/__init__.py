@@ -456,6 +456,14 @@ class MITSUBA_OT_convert_all_materials_cycles(bpy.types.Operator):
 	def report_log(self, level, msg):
 		MtsLog('Material conversion %s: %s' % (level, msg))
 
+	def printError(self, obj, msg):
+		if MITSUBA_OT_convert_all_materials.file_log is None:
+			name = get_director() + "/ErrorConvertionMaterials.txt"
+			MITSUBA_OT_convert_all_materials.file_log = open(name,'w')
+			MITSUBA_OT_convert_all_materials.file_log.write("WE HAD PROBLEMS CONVERTING THE FOLLOWING MATERIALS\n")
+		MITSUBA_OT_convert_all_materials.file_log.write(msg)
+		MITSUBA_OT_convert_all_materials.file_log.flush()
+
 	def execute(self, context):			
 		outFile = MITSUBA_OT_convert_all_materials.file_log
 		for obj in bpy.data.objects:			
@@ -463,8 +471,12 @@ class MITSUBA_OT_convert_all_materials_cycles(bpy.types.Operator):
 				l = len(obj.data.materials)
 				materialNames = []				
 				for i in range(l):
-					materialNames.append(obj.data.materials[i].name)
-			
+					try:
+						materialNames.append(obj.data.materials[i].name)
+					except Exception as err:
+						self.printError(obj,"OBJ:%s  Material no Name "%(obj.name))
+						self.report_log({'ERROR'}, 'Cannot convert material: %s' % err)
+						
 				for i in materialNames:	
 					try :	
 						blender_mat = obj.data.materials[i]
@@ -474,12 +486,7 @@ class MITSUBA_OT_convert_all_materials_cycles(bpy.types.Operator):
 								material_converter_cycles(self.report_log, context.scene, blender_mat , obj)
 						
 					except Exception as err:
-						if outFile:
-							outFile.write("OBJ:%s  Material:%s"%(obj.name,blender_mat.name))
-						else :
-							name = get_director() + "/ErrorConvertinhMaterials.txt"
-							MITSUBA_OT_convert_all_materials.file_log = open(name,'w')
-							MITSUBA_OT_convert_all_materials.file_log.write("WE HAD PROBLEMS CONVERTING THE FOLLOWING MATERIALS\n\nOBJ:%s  Material:%s" %(str(obj.name),str(blender_mat.name)) )
+						self.printError(obj,"OBJ:%s  Material:%s"%(obj.name,blender_mat.name))
 						self.report_log({'ERROR'}, 'Cannot convert material: %s' % err)
 		
 		if outFile:
