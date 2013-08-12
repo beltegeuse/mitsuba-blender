@@ -29,7 +29,6 @@ from .. import MitsubaAddon
 from ..outputs import MtsLog
 from ..export.scene import SceneExporter
 from mitsuba.operators.MaterialConvertors import material_selection_for_convertion_cycles, assigne_default_material
-#
 
 class MITSUBA_MT_base(bpy.types.Menu):
 	preset_operator = "script.execute_preset"
@@ -54,24 +53,18 @@ class MITSUBA_OT_preset_engine_add(bl_operators.presets.AddPresetBase, bpy.types
 			'bpy.context.scene.mitsuba_engine.%s'%v['attr'] for v in bpy.types.mitsuba_engine.get_exportable_properties()
 		]
 		return super().execute(context)
-	
-#I'm not sure, but i think this can be made somehow more elegent 
+
 def get_director():
-	path = bpy.data.filepath
-	directors = path.split('/')
-	l = len(directors)
-	name = ""
-	for i in range(l-1):
-		 name = name + "/" + directors[i]
-	return name
+	return os.path.dirname(bpy.data.filepath)
 
 def write_message_to_file(fileObj , mess):	
 	if not(fileObj.file_log):			
-		name = get_director() + "/ErrorConvertinhMaterials.txt"
+		name = get_director() + "/ErrorConvertionMaterials.txt"
 		fileObj.file_log = open(name,'w')				
 		fileObj.file_log.write("WE HAD PROBLEMS CONVERTING THE FOLLOWING MATERIALS\n\n")
 	fileObj.file_log.write('\n%s\n' %mess)
-
+	fileObj.file_log.flush()
+	
 @MitsubaAddon.addon_register_class
 class MITSUBA_MT_presets_texture(MITSUBA_MT_base):
 	bl_label = "Mitsuba Texture Presets"
@@ -478,9 +471,7 @@ class MITSUBA_OT_convert_all_materials_cycles(bpy.types.Operator):
 					try:
 						materialNames.append(obj.data.materials[i].name)
 					except Exception as err:
-					    #TODO: CHANGES
-						self.printError(obj,"OBJ:%s  Material no Name "%(obj.name))
-						self.report_log({'ERROR'}, 'Cannot convert material: %s' % err)
+						self.report_log({'ERROR'}, 'Cannot convert material: %s' % err, "OBJ:%s  Material no Name "%(obj.name))
 						
 				for i in materialNames:	
 					try :	
@@ -491,16 +482,10 @@ class MITSUBA_OT_convert_all_materials_cycles(bpy.types.Operator):
 								material_converter_cycles(self.report_log, context.scene, blender_mat , obj)
 						
 					except Exception as err:
-						self.printError(obj,"OBJ:%s  Material:%s"%(obj.name,blender_mat.name))
-						self.report_log({'ERROR'}, 'Cannot convert material: %s' % err , " ")
-		
+						self.report_log({'ERROR'}, 'Cannot convert material: %s' % err , " ")		
 		if outFile:
-			outFile.close()
-			MtsLog("FINISHED WITH SOME PROBLEMS(check ErrorConvertinhMaterials.txt)", popup=True)
-			return {'FINISHED WITH SOME PROBLEMS(check ErrorConvertinhMaterials.txt)'}
-		else:		
-			return {'FINISHED'}
-		
+			outFile.close()			
+			return {'FINISHED WITH SOME PROBLEMS(check ErrorConvertionMaterials.txt)'}		
 		return {'FINISHED'}						
 						
 @MitsubaAddon.addon_register_class
@@ -611,8 +596,7 @@ class MITSUBA_OT_medium_add(bpy.types.Operator):
 
 @MitsubaAddon.addon_register_class
 class MITSUBA_OT_medium_remove(bpy.types.Operator):
-	'''Remove the selected medium definition'''
-	
+	'''Remove the selected medium definition'''	
 	bl_idname = "mitsuba.medium_remove"
 	bl_label = "Remove Mitsuba Medium"
 	
