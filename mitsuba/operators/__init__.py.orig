@@ -244,7 +244,7 @@ def material_converter_cycles(report, scene, blender_mat , obj = None):
 			
 		if("Material Output" in blender_mat.node_tree.nodes):
 			matOutNode = blender_mat.node_tree.nodes["Material Output"]
-		else:
+		else:			
 			report({'INFO'}, 'No Cycle entry point for "%s"' % blender_mat.name)
 			return {'FINISHED'}
 		
@@ -468,20 +468,14 @@ class MITSUBA_OT_convert_all_materials_cycles(bpy.types.Operator):
 		if (toFile):			
 			write_message_to_file(self ,"%s   %s"%(msg,toFile))
 
-	def execute(self, context):			
-		outFile = MITSUBA_OT_convert_all_materials.file_log
+	def execute(self, context):					
 		for obj in bpy.data.objects:			
 			if obj.type == 'MESH' :				
 				l = len(obj.data.materials)
 				materialNames = []				
 				for i in range(l):
-					try:
-						materialNames.append(obj.data.materials[i].name)
-					except Exception as err:
-					    #TODO: CHANGES
-						self.printError(obj,"OBJ:%s  Material no Name "%(obj.name))
-						self.report_log({'ERROR'}, 'Cannot convert material: %s' % err)
-						
+					materialNames.append(obj.data.materials[i].name)
+			
 				for i in materialNames:	
 					try :	
 						blender_mat = obj.data.materials[i]
@@ -491,17 +485,12 @@ class MITSUBA_OT_convert_all_materials_cycles(bpy.types.Operator):
 								material_converter_cycles(self.report_log, context.scene, blender_mat , obj)
 						
 					except Exception as err:
-						self.printError(obj,"OBJ:%s  Material:%s"%(obj.name,blender_mat.name))
 						self.report_log({'ERROR'}, 'Cannot convert material: %s' % err , " ")
-		
-		if outFile:
-			outFile.close()
-			MtsLog("FINISHED WITH SOME PROBLEMS(check ErrorConvertinhMaterials.txt)", popup=True)
-			return {'FINISHED WITH SOME PROBLEMS(check ErrorConvertinhMaterials.txt)'}
-		else:		
-			return {'FINISHED'}
-		
-		return {'FINISHED'}						
+			
+		if MITSUBA_OT_convert_all_materials_cycles.file_log:
+			MITSUBA_OT_convert_all_materials_cycles.file_log.close()
+			return {'FINISHED WITH SOME PROBLEMS(check ErrorConvertinhMaterials.txt)'}			
+		return {'FINISHED'}				
 						
 @MitsubaAddon.addon_register_class
 class MITSUBA_OT_convert_material_cycles(bpy.types.Operator):
