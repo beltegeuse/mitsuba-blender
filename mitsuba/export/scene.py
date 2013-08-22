@@ -291,60 +291,14 @@ class SceneExporter:
 				self.exportMaterial(self.findMaterial(p.value))
 			elif p.type == 'reference_texture' and p.value != '':
 				self.exportTexture(self.findTexture(p.value))
-		
-		if mat.mitsuba_mat_subsurface.use_subsurface:
+				
+		if mat.mitsuba_mat_subsurface.use_subsurface:		
 			msss = mat.mitsuba_mat_subsurface
 			if msss.type == 'dipole':
 				self.openElement('subsurface', {'id' : '%s-subsurface' % mat.name, 'type' : 'dipole'})
-			elif msss.type in ['homogeneous','heterogeneous']:
-				phase = getattr(msss, 'mitsuba_sss_%s' % msss.type)
-				self.openElement('medium', {'id' : '%s-interior' % mat.name, 'type' : msss.type})
-				if msss.type == 'heterogeneous':
-					self.openElement('volume', {'name' : 'density', 'type' : 'constvolume'})
-					self.parameter('float', 'value', {'value' : str(phase.density)})
-					self.closeElement()
-					self.openElement('volume', {'name' : 'albedo', 'type' : 'constvolume'})
-					self.parameter('rgb', 'value', { 'value' : "%f %f %f"
-						% (phase.albedo.r, phase.albedo.g, phase.albedo.b)})
-					self.closeElement()
-					self.openElement('volume', {'name' : 'orientation', 'type' : 'constvolume'})
-					self.parameter('vector', 'value', { 'x' : phase.orientation[0], 'y' : phase.orientation[1], 'z' : phase.orientation[2]})
-					self.closeElement()
-				self.openElement('phase', {'id' : '%s-intphase' % mat.name, 'type' : phase.phaseType})
-				if phase.phaseType == 'hg':
-					self.parameter('float', 'g', {'value' : str(phase.g)})
-				elif phase.phaseType == 'microflake':
-					self.parameter('float', 'stddev', {'value' : str(phase.stddev)})
-				self.closeElement()
-			sss_params = msss.get_params()
-			sss_params.export(self)
-			self.closeElement()
-		
-		if mat.mitsuba_mat_extmedium.use_extmedium:
-			mext = mat.mitsuba_mat_extmedium
-			phase = getattr(mext, 'mitsuba_extmed_%s' % mext.type)
-			self.openElement('medium', {'id' : '%s-exterior' % mat.name, 'type' : mext.type})
-			if mext.type == 'heterogeneous':
-				self.openElement('volume', {'name' : 'density', 'type' : 'constvolume'})
-				self.parameter('float', 'value', {'value' : str(phase.density)})
-				self.closeElement()
-				self.openElement('volume', {'name' : 'albedo', 'type' : 'constvolume'})
-				self.parameter('rgb', 'value', { 'value' : "%f %f %f"
-					% (phase.albedo.r, phase.albedo.g, phase.albedo.b)})
-				self.closeElement()
-				self.openElement('volume', {'name' : 'orientation', 'type' : 'constvolume'})
-				self.parameter('vector', 'value', { 'x' : phase.orientation[0], 'y' : phase.orientation[1], 'z' : phase.orientation[2]})
-				self.closeElement()
-			self.openElement('phase', {'id' : '%s-extphase' % mat.name, 'type' : phase.phaseType})
-			if phase.phaseType == 'hg':
-				self.parameter('float', 'g', {'value' : str(phase.g)})
-			elif phase.phaseType == 'microflake':
-				self.parameter('float', 'stddev', {'value' : str(phase.stddev)})
-			self.closeElement()
-			extmedium_params = mext.get_params()
-			extmedium_params.export(self)
-			self.closeElement()
-		
+				sss_params = msss.get_params()
+				sss_params.export(self)
+				self.closeElement()				
 		
 		# Export Surface BSDF	
 		if mat.mitsuba_mat_bsdf.use_bsdf:
@@ -431,12 +385,12 @@ class SceneExporter:
 		
 		if mmat_subsurface.use_subsurface:
 			if mmat_subsurface.type == 'dipole':
-				self.element('ref', {'name' : 'subsurface', 'id' : '%s-subsurface' % material.name})
+				self.element('ref', {'name' : 'subsurface', 'id' : '%s-subsurface' % material.name})	
 			elif mmat_subsurface.type == 'homogeneous':
-				self.element('ref', {'name' : 'interior', 'id' : '%s-interior' % material.name})
+				self.element('ref', {'name' : 'interior', 'id' : '%s-interior' % mmat_subsurface.mitsuba_sss_participating.interior_medium})		#change the name 
 		
 		if mmat_medium.use_extmedium:
-			self.element('ref', {'name' : 'exterior', 'id' : '%s-exterior' % material.name})
+			self.element('ref', {'name' : 'exterior', 'id' : '%s-exterior' % mmat_medium.mitsuba_extmed_participating.exterior_medium})			#change the name 
 		
 		if mmat_emitter.use_emitter:
 			mult = mmat_emitter.intensity
@@ -515,8 +469,7 @@ class SceneExporter:
 		#	self.parameter('float', 'shutterOpen', {'value' : str(shutterOpen)})
 		#	self.parameter('float', 'shutterClose', {'value' : str(shutterClose)})
 		if mcam.exterior_medium != '':
-			self.exportMedium(scene.mitsuba_media.media[mcam.exterior_medium])
-			self.element('ref', { 'name' : 'exterior', 'id' : mcam.exterior_medium})
+			self.exportMediumReference("exterior", scene.mitsuba_media.media[mcam.exterior_medium].name)
 		self.closeElement() # closing sensor element 
 	
 	def exportMedium(self, medium):
@@ -566,6 +519,10 @@ class SceneExporter:
 			return False
 		
 		self.exportIntegrator(scene)
+		
+		# === Export all the Participating media
+		for media in scene.mitsuba_media.media:
+			self.exportMedium(media)
 		
 		# Always export all Cameras, active camera last
 		allCameras = [cam for cam in scene.objects if cam.type == 'CAMERA' and cam.name != scene.camera.name]

@@ -668,10 +668,10 @@ class GeometryExporter(object):
 					if ob_mat.mitsuba_mat_subsurface.use_subsurface:
 						if ob_mat.mitsuba_mat_subsurface.type == 'dipole':
 							self.mts_context.element('ref', {'name' : 'subsurface', 'id' : '%s-subsurface' % ob_mat.name})
-						elif ob_mat.mitsuba_mat_subsurface.type == 'homogeneous':
-							self.mts_context.element('ref', {'name' : 'interior', 'id' : '%s-interior' % ob_mat.name})
+						elif ob_mat.mitsuba_mat_subsurface.type == 'participating':
+							self.mts_context.element('ref', {'name' : 'interior', 'id' : '%s' % ob_mat.mitsuba_mat_subsurface.mitsuba_sss_participating.interior_medium})
 					if ob_mat.mitsuba_mat_extmedium.use_extmedium:
-						self.mts_context.element('ref', {'name' : 'exterior', 'id' : '%s-exterior' % ob_mat.name})
+						self.mts_context.element('ref', {'name' : 'exterior', 'id' : '%s' % ob_mat.mitsuba_mat_extmedium.mitsuba_extmed_participating.exterior_medium})
 					if ob_mat.mitsuba_mat_emitter.use_emitter:
 						self.mts_context.exportMaterialEmitter(ob_mat)
 			
