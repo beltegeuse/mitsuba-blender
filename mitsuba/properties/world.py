@@ -72,10 +72,12 @@ class mitsuba_medium_data(declarative_property_group):
 	these in its CollectionProperty 'media'.
 	'''
 	
-	ef_attach_to = []	# not attached
+	ef_attach_to = []	
 	
 	controls = [
 		'type',
+		'metode',
+		'density',		
 		'material',
 		'g',
 		'useAlbSigmaT'
@@ -85,8 +87,9 @@ class mitsuba_medium_data(declarative_property_group):
 		param_extinctionCoeff.controls + \
 		param_albedo.controls + \
 	[
-		'scale'
-	]
+		'scale',
+		 [0.33,'albado_colorlabel', 'albado_color'],
+	]	
 	
 	properties = [
 		{
@@ -95,11 +98,11 @@ class mitsuba_medium_data(declarative_property_group):
 			'name': 'Type',
 			'items': [
 				('homogeneous', 'Homogeneous', 'homogeneous'),
-				#('heterogeneous', 'Heterogeneous', 'heterogeneous'),
+				('heterogeneous', 'Heterogeneous', 'heterogeneous'),
 			],
 			'save_in_preset': True
 		},
-		{
+		{																		
 			'type': 'string',
 			'attr': 'material',
 			'name': 'Preset name',
@@ -107,7 +110,24 @@ class mitsuba_medium_data(declarative_property_group):
 			'default': '',
 			'save_in_preset': True
 		},
+		{																		
+			'type': 'enum',
+			'attr': 'metode',
+			'name': 'Metode',
+			'items': [
+				('woodcock', 'Woodcock', 'woodcock'),
+				('simpson', 'Simpson', 'simpson'),				
+			],
+			'save_in_preset': True
+		},		
 		{
+			'type': 'string',
+			'subtype': 'FILE_PATH',
+			'attr': 'density',
+			'name': 'Density file',
+			'description': 'Path to a grid volume density file (.vol)'
+		},		
+		{		
 			'type': 'float',
 			'attr': 'g',
 			'name': 'Asymmetry',
@@ -118,6 +138,24 @@ class mitsuba_medium_data(declarative_property_group):
 			'max': 1.0,
 			'soft_max': 1.0,
 			'precision': 4,
+			'save_in_preset': True
+		},
+		{
+			'type': 'text',
+			'attr': 'albado_colorlabel' ,
+			'name': 'Albado'
+		},
+		{
+			'type': 'float_vector',
+			'attr': 'albado_color' ,
+			'name': '', #self.name,
+			'description': 'The color for the albado ',
+			'default': (0.01, 0.01, 0.01),
+			'min': 0.0,
+			'soft_min': 0.0,
+			'max': 1.0,
+			'soft_max': 1.0,
+			'subtype': 'COLOR',
 			'save_in_preset': True
 		},
 		{			
@@ -142,22 +180,25 @@ class mitsuba_medium_data(declarative_property_group):
 		param_absorptionCoefficient.properties + \
 		param_scattCoeff.properties + \
 		param_extinctionCoeff.properties + \
-		param_albedo.properties
+		param_albedo.properties  
 	
 	visibility = dict_merge(
-		{
-			'useAlbSigmaT': { 'material': '' }
-		},
+		{ 'useAlbSigmaT': { 'material': '' , 'type' : 'homogeneous'}  },
+		{ 'material' : {'type' : 'homogeneous'} },		
+		{ 'metode' : {'type' : 'heterogeneous'} },		
+		{ 'density' : {'type' : 'heterogeneous'} },
+		{ 'albado_color' : {'type' : 'heterogeneous'} },
+		{ 'albado_colorlabel' : {'type' : 'heterogeneous'} },		
 		param_absorptionCoefficient.visibility,
 		param_scattCoeff.visibility,
 		param_extinctionCoeff.visibility,
 		param_albedo.visibility
 	)
 	
-	visibility = texture_append_visibility(visibility, param_extinctionCoeff, { 'material': '', 'useAlbSigmaT': True })
-	visibility = texture_append_visibility(visibility, param_albedo, { 'material': '', 'useAlbSigmaT': True })
-	visibility = texture_append_visibility(visibility, param_scattCoeff, { 'material': '', 'useAlbSigmaT': False })
-	visibility = texture_append_visibility(visibility, param_absorptionCoefficient, { 'material': '', 'useAlbSigmaT': False })
+	visibility = texture_append_visibility(visibility, param_extinctionCoeff, { 'material': '', 'useAlbSigmaT': True , 'type' : 'homogeneous'})
+	visibility = texture_append_visibility(visibility, param_albedo, { 'material': '', 'useAlbSigmaT': True , 'type' : 'homogeneous' })	
+	visibility = texture_append_visibility(visibility, param_scattCoeff, { 'material': '', 'useAlbSigmaT': False ,'type' : 'homogeneous'})
+	visibility = texture_append_visibility(visibility, param_absorptionCoefficient, { 'material': '', 'useAlbSigmaT': False ,'type' : 'homogeneous'})
 	
 	def get_params(self):
 		params = ParamSet()

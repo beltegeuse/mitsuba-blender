@@ -477,6 +477,11 @@ class SceneExporter:
 			return
 		self.exported_media += [medium.name]
 		self.openElement('medium', {'id' : medium.name, 'type' : medium.type})
+		if medium.type == 'heterogeneous':			
+			self.parameter('string', 'method', {'value' : str(medium.metode)})			
+			self.openElement('volume', {'name' : 'density','type' : 'gridvolume'})
+			self.parameter('string', 'filename', {'value' : str(medium.density)})
+			self.closeElement()					
 		if medium.g == 0:
 			self.element('phase', {'type' : 'isotropic'})
 		else:
@@ -486,7 +491,11 @@ class SceneExporter:
 		if medium.type == 'homogeneous':
 			params = medium.get_params()
 			params.export(self)
-		
+		else :	# the heterogeneous			
+			self.openElement('volume', {'name' : 'albedo','type' : 'gridvolume'})
+			self.parameter('spectrum', 'value', {'value' : "%f, %f, %f" %(medium.albado_color.r ,medium.albado_color.g, medium.albado_color.b)})			
+			self.closeElement()											
+			self.parameter('float', 'scale', {'value' : str(medium.scale)})
 		self.closeElement()
 	
 	def isMaterialSafe(self, mat):
