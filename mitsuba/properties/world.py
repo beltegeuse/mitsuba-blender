@@ -77,7 +77,6 @@ class mitsuba_medium_data(declarative_property_group):
 	controls = [
 		'type',
 		'metode',
-		'density',		
 		'material',
 		'g',
 		'useAlbSigmaT'
@@ -88,7 +87,11 @@ class mitsuba_medium_data(declarative_property_group):
 		param_albedo.controls + \
 	[
 		'scale',
+		'externalDensity',
+		'density',			
+		'object_pop',	
 		 [0.33,'albado_colorlabel', 'albado_color'],
+		 'convert',
 	]	
 	
 	properties = [
@@ -126,6 +129,22 @@ class mitsuba_medium_data(declarative_property_group):
 			'attr': 'density',
 			'name': 'Density file',
 			'description': 'Path to a grid volume density file (.vol)'
+		},				
+		{
+			'attr': 'object' ,
+			'type': 'string',
+			'name': 'object',
+			'description': 'Object of Domain type ' ,
+			'save_in_preset': True
+		},
+		{
+			'type': 'prop_search',
+			'attr': 'object_pop',
+			'src': lambda s,c: s.scene,
+			'src_attr': 'objects',
+			'trg': lambda s,c: c,			
+			'trg_attr': 'object' ,
+			'name': 'Objects'
 		},		
 		{		
 			'type': 'float',
@@ -176,6 +195,13 @@ class mitsuba_medium_data(declarative_property_group):
 			'max': 50000.0,
 			'save_in_preset': True
 		},
+		{
+			'type': 'bool',
+			'attr': 'externalDensity',
+			'name' : 'External Density',			
+			'default' : False,			
+			'save_in_preset': True
+		},
 	] + \
 		param_absorptionCoefficient.properties + \
 		param_scattCoeff.properties + \
@@ -186,9 +212,11 @@ class mitsuba_medium_data(declarative_property_group):
 		{ 'useAlbSigmaT': { 'material': '' , 'type' : 'homogeneous'}  },
 		{ 'material' : {'type' : 'homogeneous'} },		
 		{ 'metode' : {'type' : 'heterogeneous'} },		
-		{ 'density' : {'type' : 'heterogeneous'} },
+		{ 'density' : {'type' : 'heterogeneous' , 'externalDensity' : True} },
 		{ 'albado_color' : {'type' : 'heterogeneous'} },
-		{ 'albado_colorlabel' : {'type' : 'heterogeneous'} },		
+		{ 'externalDensity' : {'type' : 'heterogeneous'} },
+		{ 'albado_colorlabel' : {'type' : 'heterogeneous'} },
+		{ 'object_pop' : {'type' : 'heterogeneous' , 'externalDensity' : False } },			
 		param_absorptionCoefficient.visibility,
 		param_scattCoeff.visibility,
 		param_extinctionCoeff.visibility,

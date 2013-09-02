@@ -29,15 +29,19 @@ from ..export import ParamSet, ExportProgressThread, ExportCache
 from ..export import is_obj_visible
 
 class InvalidGeometryException(Exception):
+	MtsLog("Invalide Geometry Exception ")
 	pass
 
 class UnexportableObjectException(Exception):
+	MtsLog("Unexportable Object exception")
 	pass
 
 class MeshExportProgressThread(ExportProgressThread):
+	MtsLog("Mash Export Progress Thread  ")
 	message = 'Exporting meshes: %i%%'
 
 class DupliExportProgressThread(ExportProgressThread):
+	MtsLog("Dupli Export Progress Tread ")
 	message = '... %i%% ...'
 
 class GeometryExporter(object):
@@ -252,7 +256,7 @@ class GeometryExporter(object):
 						
 						del vert_vno_indices
 						del vert_use_vno
-						
+												
 						with open(ply_path, 'wb') as ply:
 							ply.write(b'ply\n')
 							ply.write(b'format binary_little_endian 1.0\n')
@@ -914,10 +918,10 @@ class GeometryExporter(object):
 				if obj.parent and obj.parent.is_duplicator:
 					raise UnexportableObjectException(' -> parent is duplicator')
 				
-				for mod in obj.modifiers:
-					if mod.name == 'Smoke':
-						if mod.smoke_type == 'DOMAIN':
-							raise UnexportableObjectException(' -> Smoke domain')
+# 				for mod in obj.modifiers:
+# 					if mod.name == 'Smoke':
+# 						if mod.smoke_type == 'DOMAIN':
+# 							raise UnexportableObjectException(' -> Smoke domain')
 				
 				number_psystems = len(obj.particle_systems)
 				
