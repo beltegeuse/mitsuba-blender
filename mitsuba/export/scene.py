@@ -25,6 +25,8 @@ from extensions_framework import util as efutil
 from ..export			import resolution
 from ..export			import geometry		as export_geometry
 from ..export			import is_obj_visible
+from mitsuba.export.mediumExporter import smoke_convertion
+
 from ..outputs import MtsLog
 
 class SceneExporter:
@@ -472,7 +474,37 @@ class SceneExporter:
 			self.exportMediumReference("exterior", scene.mitsuba_media.media[mcam.exterior_medium].name)
 		self.closeElement() # closing sensor element 
 	
-	def exportMedium(self, medium):
+	def exportVoxelData(self,objName , scene):
+		obj = None		
+		try :
+			obj = bpy.data.objects[objName]
+		except :
+			MtsLog("ERROR : assigning the object")
+# 		
+# 		sc_fr = '%s/%s/%s/%05d' % (self.mts_context.meshes_dir, efutil.scene_filename(), bpy.path.clean_name(self.geometry_scene.name), self.visibility_scene.frame_current)
+		#meshes_dir = os.path.dirname(bpy.data.filepath)+ "/meshes"
+		#meshes_dir = efutil.path_relative_to_export("./meshes")		
+		scene_filename = efutil.scene_filename()
+		geo = bpy.path.clean_name(scene.name)
+				
+		sc_fr = '%s/%s/%s/%05d' %(self.meshes_dir , scene_filename , geo , scene.frame_current)
+		#MtsLog("\n FILE PATH: %s"%sc_fr)
+		if not os.path.exists( sc_fr ):
+			os.makedirs(sc_fr)
+		obj_name = ("/voxel_%s_%d.vol"%(str(objName),scene.frame_current))
+		filename = sc_fr + obj_name
+		MtsLog("\n FILE PATH: %s"%filename)		
+		#filename = os.path.dirname(bpy.data.filepath)+ "/voxel_Data.vol"
+		smoke_convertion( MtsLog , filename , obj)
+		return filename
+	
+	def reexportVoxelDataCoordinates(self, file):
+		obj = None
+		# get the Boundig Box object
+		#updateBoundinBoxCoorinates(file , obj)
+		
+	
+	def exportMedium(self, medium , scene):
 		if medium.name in self.exported_media:
 			return
 		self.exported_media += [medium.name]
@@ -480,7 +512,12 @@ class SceneExporter:
 		if medium.type == 'heterogeneous':			
 			self.parameter('string', 'method', {'value' : str(medium.metode)})			
 			self.openElement('volume', {'name' : 'density','type' : 'gridvolume'})
-			self.parameter('string', 'filename', {'value' : str(medium.density)})
+			if medium.externalDensity :
+				self.parameter('string', 'filename', {'value' : str(medium.density)})		# default BUT when i have on object ...
+				# if medium.rewrite :
+				#	reexportVoxelDataCoordinates(medium.density)					
+			else :				
+				self.parameter('string', 'filename', {'value' : self.exportVoxelData(medium.object,scene) })				# when there is on object
 			self.closeElement()					
 		if medium.g == 0:
 			self.element('phase', {'type' : 'isotropic'})
@@ -492,7 +529,7 @@ class SceneExporter:
 			params = medium.get_params()
 			params.export(self)
 		else :	# the heterogeneous			
-			self.openElement('volume', {'name' : 'albedo','type' : 'gridvolume'})
+			self.openElement('volume', {'name' : 'albedo','type' : 'constvolume'})
 			self.parameter('spectrum', 'value', {'value' : "%f, %f, %f" %(medium.albado_color.r ,medium.albado_color.g, medium.albado_color.b)})			
 			self.closeElement()											
 			self.parameter('float', 'scale', {'value' : str(medium.scale)})
@@ -531,7 +568,7 @@ class SceneExporter:
 		
 		# === Export all the Participating media
 		for media in scene.mitsuba_media.media:
-			self.exportMedium(media)
+			self.exportMedium(media,scene)
 		
 		# Always export all Cameras, active camera last
 		allCameras = [cam for cam in scene.objects if cam.type == 'CAMERA' and cam.name != scene.camera.name]
