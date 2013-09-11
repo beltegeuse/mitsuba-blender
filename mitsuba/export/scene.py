@@ -484,23 +484,16 @@ class SceneExporter:
 			obj = bpy.data.objects[objName]
 		except :
 			MtsLog("ERROR : assigning the object")
-			
+		# path where to put the VOXEL FILES	
 		scene_filename = efutil.scene_filename()
 		geo = bpy.path.clean_name(scene.name)				
-		sc_fr = '%s/%s/%s/%05d' %(self.meshes_dir , scene_filename , geo , scene.frame_current)
-		
+		sc_fr = '%s/%s/%s/%05d' %(self.meshes_dir , scene_filename , geo , scene.frame_current)		
 		if not os.path.exists(sc_fr):
 			os.makedirs(sc_fr)
-				
-		#obj_name = ("/voxel_%s_%d.vol"%(str(objName),scene.frame_current))
-		#filename = sc_fr + obj_name
-		
+		# path to the .bphys file	
 		dir_name = os.path.dirname(bpy.data.filepath) + "/blendcache_" + os.path.basename(bpy.data.filepath)[:-6]
 		cachname = ("/43756265_%06d_00.bphys"%(scene.frame_current) )
-		cachFile = dir_name + cachname	
-		
-			
-		#filename = os.path.dirname(bpy.data.filepath)+ "/voxel_Data.vol"	
+		cachFile = dir_name + cachname		
 		volume = volumes()	
 		filenames = volume.smoke_convertion( MtsLog, cachFile, sc_fr, scene.frame_current, obj)
 		return filenames
@@ -521,12 +514,12 @@ class SceneExporter:
 			self.parameter('string', 'method', {'value' : str(medium.metode)})			
 			self.openElement('volume', {'name' : 'density','type' : 'gridvolume'})
 			if medium.externalDensity :
-				self.parameter('string', 'filename', {'value' : str(medium.density)})		# default BUT when i have on object ...
+				self.parameter('string', 'filename', {'value' : str(medium.density)})
 				# if medium.rewrite :
 				#	reexportVoxelDataCoordinates(medium.density)					
 			else :	
 				voxels = self.exportVoxelData(medium.object,scene)			
-				self.parameter('string', 'filename', {'value' : voxels[0] })				# when there is on object
+				self.parameter('string', 'filename', {'value' : voxels[0] })
 			self.closeElement()					
 		if medium.g == 0:
 			self.element('phase', {'type' : 'isotropic'})
@@ -583,18 +576,18 @@ class SceneExporter:
 		for media in scene.mitsuba_media.media:
 			self.exportMedium(media,scene)
 		
-		# Always export all Cameras, active camera last
+		# === Always export all Cameras, active camera last
 		allCameras = [cam for cam in scene.objects if cam.type == 'CAMERA' and cam.name != scene.camera.name]
 		for camera in allCameras:
 			self.exportCamera(scene, camera)
 		self.exportCamera(scene, scene.camera)
 		
-		# Get all renderable LAMPS
+		# === Get all renderable LAMPS
 		renderableLamps = [lmp for lmp in scene.objects if is_obj_visible(scene, lmp) and lmp.type == 'LAMP']
 		for lamp in renderableLamps:
 			self.exportLamp(scene, lamp)
 		
-		# Export geometry
+		# === Export geometry
 		GE = export_geometry.GeometryExporter(self, scene)
 		GE.iterateScene(scene)
 		
