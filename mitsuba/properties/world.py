@@ -89,9 +89,10 @@ class mitsuba_medium_data(declarative_property_group):
 		'scale',
 		'externalDensity',
 		'density',			
-		'object_pop',	
-		 [0.33,'albado_colorlabel', 'albado_color'],
-		 'convert',
+		'object_pop',			 
+		[ 0.9, [0.375,'albado_colorlabel', 'albado_color'], 'albedo_usegridvolume'],
+		'albedo_gridVolumeType',	
+		'convert',
 	]	
 	
 	properties = [
@@ -196,6 +197,24 @@ class mitsuba_medium_data(declarative_property_group):
 			'save_in_preset': True
 		},
 		{
+			'attr': 'albedo_usegridvolume',
+			'type': 'bool',
+			'name': 'H',
+			'description': 'Coloring the texture by heat',
+			'default': False,
+			'toggle': True,
+			'save_in_preset': True
+		},
+		{
+			'type': 'enum',
+			'attr': 'albedo_gridVolumeType',
+			'name': 'Type',
+			'items': [
+				('heat', 'Heat', 'heat'),				
+			],
+			'save_in_preset': True
+		},
+		{
 			'type': 'bool',
 			'attr': 'externalDensity',
 			'name' : 'External Density',			
@@ -216,7 +235,9 @@ class mitsuba_medium_data(declarative_property_group):
 		{ 'albado_color' : {'type' : 'heterogeneous'} },
 		{ 'externalDensity' : {'type' : 'heterogeneous'} },
 		{ 'albado_colorlabel' : {'type' : 'heterogeneous'} },
-		{ 'object_pop' : {'type' : 'heterogeneous' , 'externalDensity' : False } },			
+		{ 'albedo_usegridvolume' : {'type' : 'heterogeneous'} },
+		{ 'object_pop' : {'type' : 'heterogeneous' , 'externalDensity' : False } },
+		{'albedo_gridVolumeType' : {'type' : 'heterogeneous', 'albedo_usegridvolume' : True} },		
 		param_absorptionCoefficient.visibility,
 		param_scattCoeff.visibility,
 		param_extinctionCoeff.visibility,
