@@ -15,59 +15,50 @@
 #  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # ##### END GPL LICENSE BLOCK #####
-#from fileinput import filename
-#from gdata.analytics.data import Destination
 
 
-            #Bytes 1-3    VOL in ASCII
-            #Byte 4        File format version number (currently 3)
-            #Bytes 5-8     Encoding identifier (32-bit integer).The following choices are available:
-            #
-            #            1. Dense float32-based representation
-            #            2. Dense float16-based representation (currently not supported by this
-            #            implementation)
-            #            3. Dense uint8-based representation (The range 0..255 will be mapped
-            #            to 0..1)
-            #            4. Dense quantized directions. The directions are stored in spherical coordinates
-            #            with a total storage cost of 16 bit per entry.
-            #            
-            #Bytes 9-12     Number of cells along the X axis (32 bit integer)
-            #Bytes 13-16    Number of cells along the Y axis (32 bit integer)
-            #Bytes 17-20    Number of cells along the Z axis (32 bit integer)
-            #Bytes 21-24    Number of channels (32 bit integer, supported values: 1 or 3)
-            #Bytes 25-48    Axis-aligned bounding box of the data stored in single precision (order:
-            #               xmin, ymin, zmin, xmax, ymax, zmax)
-            #Bytes 49-*     Binary data of the volume stored in the specified encoding. The data
-            #               are ordered so that the following C-style indexing operationmakes sense
-            #               after the file has been mapped into memory:
-            #               data[((zpos*yres + ypos)*xres + xpos)*channels + chan]
-            #               where (xpos, ypos, zpos, chan) denotes the lookup location.
-            #
-            #    Example : 
-            #    56 4F 4C 33    01 00 00 00    10 00 00 00    10 00 00 00      ||  VOL3 1 3 3
-            #    10 00 00 00    01 00 00 00    FF FF FF FF    FF FF FF FF      ||  3 1 -1 -1
-            #    FF FF FF FF    01 00 00 00    01 00 00 00    01 00 00 00      ||  -1 1 1 1  
-            #    -------------------------------------------------------------
-            #     THE REST IS THE CONTENT  3*3*3 =  27 times
-            #
+    ##########################################################################################
+    #    THE VOXEL DATA FORMAT NEEDED FOR THE MITSUBA 
+    ##########################################################################################
+    #
+    #Bytes 1-3     VOL in ASCII
+    #Byte 4        File format version number (currently 3)
+    #Bytes 5-8     Encoding identifier (32-bit integer).The following choices are available:
+    #
+    #            1. Dense float32-based representation
+    #            2. Dense float16-based representation (currently not supported by this implementation)
+    #            3. Dense uint8-based representation (The range 0..255 will be mapped to 0..1)
+    #            4. Dense quantized directions. The directions are stored in spherical coordinates
+    #                        with a total storage cost of 16 bit per entry.
+    #            
+    #Bytes 9-12     Number of cells along the X axis (32 bit integer)
+    #Bytes 13-16    Number of cells along the Y axis (32 bit integer)
+    #Bytes 17-20    Number of cells along the Z axis (32 bit integer)
+    #Bytes 21-24    Number of channels (32 bit integer, supported values: 1 or 3)
+    #Bytes 25-48    Axis-aligned bounding box of the data stored in single precision (order:
+    #               xmin, ymin, zmin, xmax, ymax, zmax)
+    #Bytes 49-*     Binary data of the volume stored in the specified encoding. The data
+    #               are ordered so that the following C-style indexing operationmakes sense
+    #               after the file has been mapped into memory:
+    #               data[((zpos*yres + ypos)*xres + xpos)*channels + chan]
+    #               where (xpos, ypos, zpos, chan) denotes the lookup location.
+    #
+    #Example : 
+    #    56 4F 4C 33    01 00 00 00    10 00 00 00    10 00 00 00      ||  VOL3 1 3 3
+    #    10 00 00 00    01 00 00 00    FF FF FF FF    FF FF FF FF      ||  3 1 -1 -1
+    #    FF FF FF FF    01 00 00 00    01 00 00 00    01 00 00 00      ||  -1 1 1 1  
+    #    -------------------------------------------------------------
+    #     THE REST IS THE CONTENT  3*3*3 =  27 times
+    ############################################################################################
 
-
-"""
-I don't know if i need this import 
-"""
-
-#from __future__ import division
 from ctypes import cdll, c_uint, c_float, cast, POINTER, byref, sizeof
 
 import os, struct, sys ,bpy
-#import matplotlib.mlab as mlab
-#import matplotlib.pyplot as plt
 
 class library_loader():
     
     load_lzo_attempted  = False
-    load_lzma_attempted = False    
-    # imported compression libraries
+    load_lzma_attempted = False        
     has_lzo     = False
     lzodll      = None    
     has_lzma    = False
@@ -155,7 +146,10 @@ class reading_cache_data():
     SZ_UINT     = sizeof(c_uint)
     
     @classmethod
-    def read_data_segment(self, cachefile, cell_count):
+    def read_data_segment(    
+    
+    
+self, cachefile, cell_count):
         compression     = 0
         binary_file     = None    
         steam_file      = None
@@ -189,7 +183,7 @@ class reading_cache_data():
                 #call lzo decompressor
                 lzodll.lzo1x_decompress(data[1], data[2], p_dens,byref(outlen), None)
                 print("Out length: %s" % (str(outlen)))                
-                for i in range(cell_count):
+                for i in range(int(outlen.value / 4) ):
                     list.append(p_dens[i])
             else:
                 print('Volumes: Cannot read compressed LZO stream; no library loaded')                        
@@ -203,13 +197,12 @@ class reading_cache_data():
                 #call lzma decompressor                            
                 lzmadll.LzmaUncompress(p_dens, byref(outlen), data[1], byref(c_uint(data[1])), data[3], data[4])
                                 
-                for i in range(cell_count):
+                for i in range(int(outlen.value / 4) ):
                     list.append(p_dens[i])
             else:
                 print('Volumes: Cannot read compressed LZMA stream; no library loaded')
         else :                          
-           #TODO: extrect so that it will be OK 
-           pass
+           #TODO: extrect so that it will be OK            
            list = struct.unpack(str(int(len(data[1])/4))+"f",data[1])
            """
                         elif heat_data[0] == 0:
@@ -285,7 +278,7 @@ class reading_cache_data():
         if False:
             print('Volumes: Smoke data has to be baked for export')
         else:        
-            cachefilename = smokecache # smokecache.name+"_{0:06d}_{1:02d}.bphys".format(scene.frame_current,smokecache.index)
+            cachefilename = smokecache 
             fullpath = os.path.join( cachefilepath, cachefilename )
             if not os.path.exists(fullpath):
                 print('Volumes: Cachefile doesn''t exist: %s' % fullpath)
@@ -417,7 +410,7 @@ class reading_cache_data():
                         ### DECOMPRESSING DATA  ###
                         print ("Density compression : %s" %density_data[0])
                         density = self.decompressing_data(density_data, cell_count)
-                        #cell_count       = res_x*res_y*res_z
+                        cell_count       = res_x*res_y*res_z
                         print ("Heat compression : %s" %heat_data[0])
                         heat    = self.decompressing_data(heat_data, cell_count)
                         print ("Heat old compression : %s" %heat_old_data[0])
@@ -425,8 +418,7 @@ class reading_cache_data():
                         if new_cache and flowtype >= 1:
                             fire = self.decompressing_data(fire_data, cell_count)       
                                                                             
-                cachefile.close()
-                #endif cachefile exists
+                cachefile.close()                
                 return (res_x, res_y, res_z, density, fire, heat ,heat_old)
         return (0,0,0,[],[],[],[])
 
@@ -452,7 +444,21 @@ class volumes(object):
     def write_to_file(self,file, data, format):
         packed = struct.pack(format , data)
         file.write(packed)  
-        
+    
+    def get_scale(self):
+        t = 0.0
+        for i in bpy.data.objects :
+            try :
+                if i.modifier['Smoke'].smoke_type == "FLOW" :
+                    x = abs(i.modifier['Smoke'].flow_settings.temperature)
+                    if x > t :
+                        t = x
+            except :
+                pass 
+        if t == 0.0 :
+            return 5.0
+        else :
+            return t
         
     def get_dimention(self,obj):    
         #TODO: Change if for the adaptive domain
@@ -471,23 +477,27 @@ class volumes(object):
             if world[2] > z_max :
                 z_max = world[2]
             elif world[2] < z_min :
-                z_min = world[2]    
-        
+                z_min = world[2]            
         return (x_min, y_min, z_min, x_max, y_max, z_max)
-        
-        
-    def get_color_ramp(self,obj,scale):
-        colors = []
-        #try : 
-        ramp = obj.active_material.texture_slots[1].texture.color_ramp.elements        
-        for i in ramp :            
-            p       = float((i.position - 0.5 ) * scale)            
-            t   = (p,i.color[0],i.color[1],i.color[2])
-            colors.append(t)
-        colors.sort()        
-        return colors  
-      
             
+    def get_color_ramp(self,obj,scale):
+        colors  = []
+        ramp    = None
+        try : 
+            for x in obj.active_material.texture_slots:
+                if x != None :
+                    t = x.texture
+                    if t.type == 'VOXEL_DATA' and t.use_color_ramp and t.voxel_data.smoke_data_type=='SMOKEHEAT' :
+                        ramp = t.color_ramp.elements                        
+            if ramp != None :        
+                for i in ramp :            
+                    p       = float((i.position - 0.5 ) * scale)            
+                    t   = (p,i.color[0],i.color[1],i.color[2])
+                    colors.append(t)
+                colors.sort()
+        except :
+            pass        
+        return colors  
         
     def smoke_convertion(self , report, sourceName, destination, frame, obj):
         Amplificator     = 0
@@ -523,9 +533,6 @@ class volumes(object):
         heat_file.write(data)
         # dimention
         print("Dim: %ix%ix%i" % (res_x, res_y, res_z))
-        print("Dim Ampli: %ix%ix%i" % (res_x*(Amplificator+1), 
-                                       res_y*(Amplificator+1), 
-                                       res_z*(Amplificator+1)))
         self.write_to_file(density_file, res_x*(Amplificator+1), int32format)        
         self.write_to_file(density_file, res_y*(Amplificator+1), int32format)        
         self.write_to_file(density_file, res_z*(Amplificator+1), int32format)
@@ -548,16 +555,13 @@ class volumes(object):
             self.write_to_file(density_file, i, float32format)   
         density_file.close()
         
-        heat_scale  = 5.0                
+        heat_scale  = self.get_scale()                
         colors = self.get_color_ramp(obj,heat_scale)
         if colors == [] :
-            colors = [[0.15 ,0.9, 0.0, 0.0],[-0.15, 0.0, 0.9, 0.0]]
+            colors = [[0.15 ,0.9, 0.0, 0.0],[-0.15, 0.0, 0.0, 0.9]]
 
         print("Length Heat   : %s"%str(len(heat)))
         for i in heat:
             heat_file.write(self.get_color(i, colors))
         heat_file.close()
         return (density_loc, heat_loc)
-    
-    
-    
