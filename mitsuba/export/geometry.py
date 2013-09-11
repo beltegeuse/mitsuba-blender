@@ -29,19 +29,19 @@ from ..export import ParamSet, ExportProgressThread, ExportCache
 from ..export import is_obj_visible
 
 class InvalidGeometryException(Exception):
-	MtsLog("Invalide Geometry Exception ")
+	#MtsLog("Invalide Geometry Exception ")
 	pass
 
 class UnexportableObjectException(Exception):
-	MtsLog("Unexportable Object exception")
+	#MtsLog("Unexportable Object exception")
 	pass
 
 class MeshExportProgressThread(ExportProgressThread):
-	MtsLog("Mash Export Progress Thread  ")
+	#MtsLog("Mash Export Progress Thread  ")
 	message = 'Exporting meshes: %i%%'
 
 class DupliExportProgressThread(ExportProgressThread):
-	MtsLog("Dupli Export Progress Tread ")
+	#MtsLog("Dupli Export Progress Tread ")
 	message = '... %i%% ...'
 
 class GeometryExporter(object):

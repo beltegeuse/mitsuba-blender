@@ -25,7 +25,11 @@ from extensions_framework import util as efutil
 from ..export			import resolution
 from ..export			import geometry		as export_geometry
 from ..export			import is_obj_visible
-from mitsuba.export.mediumExporter import smoke_convertion
+#from mitsuba.export.volumes import smoke_convertion
+#from ..export.volumes import smoke_convertion
+#import volumes
+#import mitsuba.export.volumes
+from mitsuba.export.volumes import volumes
 
 from ..outputs import MtsLog
 
@@ -480,23 +484,26 @@ class SceneExporter:
 			obj = bpy.data.objects[objName]
 		except :
 			MtsLog("ERROR : assigning the object")
-# 		
-# 		sc_fr = '%s/%s/%s/%05d' % (self.mts_context.meshes_dir, efutil.scene_filename(), bpy.path.clean_name(self.geometry_scene.name), self.visibility_scene.frame_current)
-		#meshes_dir = os.path.dirname(bpy.data.filepath)+ "/meshes"
-		#meshes_dir = efutil.path_relative_to_export("./meshes")		
+			
 		scene_filename = efutil.scene_filename()
-		geo = bpy.path.clean_name(scene.name)
-				
+		geo = bpy.path.clean_name(scene.name)				
 		sc_fr = '%s/%s/%s/%05d' %(self.meshes_dir , scene_filename , geo , scene.frame_current)
-		#MtsLog("\n FILE PATH: %s"%sc_fr)
-		if not os.path.exists( sc_fr ):
+		
+		if not os.path.exists(sc_fr):
 			os.makedirs(sc_fr)
-		obj_name = ("/voxel_%s_%d.vol"%(str(objName),scene.frame_current))
-		filename = sc_fr + obj_name
-		MtsLog("\n FILE PATH: %s"%filename)		
-		#filename = os.path.dirname(bpy.data.filepath)+ "/voxel_Data.vol"
-		smoke_convertion( MtsLog , filename , obj)
-		return filename
+				
+		#obj_name = ("/voxel_%s_%d.vol"%(str(objName),scene.frame_current))
+		#filename = sc_fr + obj_name
+		
+		dir_name = os.path.dirname(bpy.data.filepath) + "/blendcache_" + os.path.basename(bpy.data.filepath)[:-6]
+		cachname = ("/43756265_%06d_00.bphys"%(scene.frame_current) )
+		cachFile = dir_name + cachname	
+		
+			
+		#filename = os.path.dirname(bpy.data.filepath)+ "/voxel_Data.vol"	
+		volume = volumes()	
+		filenames = volume.smoke_convertion( MtsLog, cachFile, sc_fr, scene.frame_current, obj)
+		return filenames
 	
 	def reexportVoxelDataCoordinates(self, file):
 		obj = None
@@ -505,6 +512,7 @@ class SceneExporter:
 		
 	
 	def exportMedium(self, medium , scene):
+		voxels = ['','']
 		if medium.name in self.exported_media:
 			return
 		self.exported_media += [medium.name]
@@ -516,8 +524,9 @@ class SceneExporter:
 				self.parameter('string', 'filename', {'value' : str(medium.density)})		# default BUT when i have on object ...
 				# if medium.rewrite :
 				#	reexportVoxelDataCoordinates(medium.density)					
-			else :				
-				self.parameter('string', 'filename', {'value' : self.exportVoxelData(medium.object,scene) })				# when there is on object
+			else :	
+				voxels = self.exportVoxelData(medium.object,scene)			
+				self.parameter('string', 'filename', {'value' : voxels[0] })				# when there is on object
 			self.closeElement()					
 		if medium.g == 0:
 			self.element('phase', {'type' : 'isotropic'})
@@ -528,10 +537,14 @@ class SceneExporter:
 		if medium.type == 'homogeneous':
 			params = medium.get_params()
 			params.export(self)
-		else :	# the heterogeneous			
-			self.openElement('volume', {'name' : 'albedo','type' : 'constvolume'})
-			self.parameter('spectrum', 'value', {'value' : "%f, %f, %f" %(medium.albado_color.r ,medium.albado_color.g, medium.albado_color.b)})			
-			self.closeElement()											
+		else :	# the heterogeneous	
+			if not medium.albedo_usegridvolume :		
+				self.openElement('volume', {'name' : 'albedo','type' : 'constvolume'})
+				self.parameter('spectrum', 'value', {'value' : "%f, %f, %f" %(medium.albado_color.r ,medium.albado_color.g, medium.albado_color.b)})							
+			else :
+				self.openElement('volume', {'name' : 'albedo','type' : 'gridvolume'})
+				self.parameter('string', 'filename', {'value' : str(voxels[1])})
+			self.closeElement()	
 			self.parameter('float', 'scale', {'value' : str(medium.scale)})
 		self.closeElement()
 	
