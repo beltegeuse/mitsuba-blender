@@ -491,8 +491,8 @@ class SceneExporter:
 		if not os.path.exists(sc_fr):
 			os.makedirs(sc_fr)
 		# path to the .bphys file	
-		dir_name = os.path.dirname(bpy.data.filepath) + "/blendcache_" + os.path.basename(bpy.data.filepath)[:-6]
-		cachname = ("/43756265_%06d_00.bphys"%(scene.frame_current) )
+		dir_name = os.path.dirname(bpy.data.filepath) + "/blendcache_" + os.path.basename(bpy.data.filepath)[:-6]		
+		cachname = ("/%s_%06d_00.bphys"%(obj.modifiers['Smoke'].domain_settings.point_cache.name ,scene.frame_current) )
 		cachFile = dir_name + cachname		
 		volume = volumes()	
 		filenames = volume.smoke_convertion( MtsLog, cachFile, sc_fr, scene.frame_current, obj)
