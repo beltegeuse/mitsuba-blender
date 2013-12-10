@@ -77,7 +77,7 @@ class mitsuba_film(declarative_property_group):
 	ef_attach_to = ['Camera']
 	
 	def file_formats(self, context):
-		if self.fileFormat == 'openexr':
+		if (self.fileFormat == 'openexr') or (self.fileFormat == 'rgbe'):
 			return [
 				('rgb', 'RGB', 'rgb'),
 				('rgba', 'RGBA', 'rgba'),
@@ -99,6 +99,9 @@ class mitsuba_film(declarative_property_group):
 		if self.fileFormat == 'openexr':
 			self.type = 'hdrfilm'
 			self.fileExtension = 'exr'
+		elif self.fileFormat == "rgbe":
+			self.type = 'hdrfilm'
+			self.fileExtension = 'rgbe'
 		else:
 			self.type = 'ldrfilm'
 			if self.fileFormat == 'jpeg':
@@ -133,7 +136,7 @@ class mitsuba_film(declarative_property_group):
 		'B': { 'rfilter': 'mitchell' },
 		'C': { 'rfilter': 'mitchell' },
 		'lobes': { 'rfilter': 'lanczos' },
-		'attachLog': { 'fileFormat': 'openexr' },
+		'attachLog': { 'type': 'hdrfilm' },
 	}
 	
 	properties = [
@@ -159,7 +162,8 @@ class mitsuba_film(declarative_property_group):
 			'items': [
 				('png', 'PNG', 'png'),
 				('jpeg', 'JPEG', 'jpeg'),
-				('openexr', 'OpenEXR', 'openexr')
+				('openexr', 'OpenEXR', 'openexr'),
+				('rgbe', 'Radiance', 'rgbe')
 			],
 			'default': 'png',
 			'update': set_type,
@@ -331,7 +335,7 @@ class mitsuba_film(declarative_property_group):
 		params = ParamSet()
 		params.add_string('fileFormat', self.fileFormat)
 		params.add_string('pixelFormat', self.pixelFormat)
-		if self.fileFormat == 'openexr':
+		if self.fileFormat == 'openexr' or self.fileFormat == 'rgbe':
 			params.add_string('componentFormat', self.componentFormat)
 			params.add_bool('attachLog', self.attachLog)
 		if self.type == 'ldrfilm':
