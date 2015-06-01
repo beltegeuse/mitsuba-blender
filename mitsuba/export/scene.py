@@ -115,6 +115,28 @@ class SceneExporter:
 	def exportPoint(self, location):
 		self.parameter('point', 'center', {'x' : location[0],'y' : location[1],'z' : location[2]})
 	
+	def exportCyclesEnvmap(self, world):
+		if(not("Environment Texture" in world.node_tree.nodes)):
+			MtsLog("[INFO] No envirnoment texture found")
+			return
+		else:
+			env = world.node_tree.nodes['Environment Texture']
+			MtsLog("[INFO] Found env map: "+str(env.image.filepath))
+			if(env.projection != 'EQUIRECTANGULAR'):
+				MtsLog("[ERROR] Envmap: Other projection than EQUIRECTANGULAR is allowed")
+				return
+			
+			self.hemi_lights += 1
+	
+			self.parameter('string', 'filename', {'value' : env.image.filepath})	
+			self.openElement('transform', {'name' : 'toWorld'})
+			self.element("rotate", {"x":"1", "y":"0", "z":"0", "angle":"90"})
+			self.element("rotate", {"x":"0", "y":"0", "z":"1", "angle":"90"})
+			self.closeElement()
+			self.closeElement()
+			
+			MtsLog("[INFO] EnvMap OK")
+			
 	def exportLamp(self, scene, lamp):
 		ltype = lamp.data.type
 		name = lamp.name
@@ -581,6 +603,9 @@ class SceneExporter:
 		for camera in allCameras:
 			self.exportCamera(scene, camera)
 		self.exportCamera(scene, scene.camera)
+		
+		# === Get env map is its exist
+		self.exportCyclesEnvmap(bpy.data.worlds['World'])
 		
 		# === Get all renderable LAMPS
 		renderableLamps = [lmp for lmp in scene.objects if is_obj_visible(scene, lmp) and lmp.type == 'LAMP']
