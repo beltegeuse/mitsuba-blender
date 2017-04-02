@@ -1,0 +1,32 @@
+# mitsuba-blender
+Mitsuba Blender Plugin
+
+Originally developed by Wenzel Jakob and Bartosz Styperek.
+"Improved" by Adrien Gruson and Akos Kassay.
+
+## Why another blender exporter for Mitsuba?
+
+We provide another blender exporter as we wanted the following functions:
+1) Automatic cycles material conversion
+2) Participating media support
+3) Other Mitsuba functions (RGBE film)
+
+### Automatic cycles material conversion
+
+This feature can be really usefull if you download scenes from [blendswap](http://www.blendswap.com/).
+However, some restriction apply:
+- Fancy texture generation / mapping is *not* supported.
+- Complex anisotropic BSDF is not supported.
+
+Except that, the automatic conversion will try to mimic the BSDF parameter to have a "similar look" inside Mitsuba.
+It is not perfect, but save a lot of time :)
+
+### Participating media support
+
+It is possible to heterogenous participating media from blender to mitsuba.
+No emissive / color participating media is supported yet. 
+Fell free to implemented if you really needed :)
+
+## Installation
+Installation instructions: Copy the 'mitsuba' folder into 
+the Blender scripts/addons directory.
